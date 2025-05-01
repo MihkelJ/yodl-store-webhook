@@ -20,7 +20,11 @@ const BEER_MAPPING = {
 } as const;
 
 const INVOICE_CURRENCY = 'BRL';
-const RECEIVER_ENS_PRIMARY_NAME = 'founderhaus.ipecity.eth';
+const RECEIVER_ENS_PRIMARY_NAME = process.env.RECEIVER_ENS_PRIMARY_NAME;
+
+if (!RECEIVER_ENS_PRIMARY_NAME) {
+  throw new Error('RECEIVER_ENS_PRIMARY_NAME is not set');
+}
 
 const txValidationMiddleware = new Middleware({
   handler: async ({ input }) => {
