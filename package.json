@@ -1,0 +1,40 @@
+{
+  "name": "yodl-notifications",
+  "version": "0.1.0",
+  "main": "public/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node public/server.js",
+    "dev": "nodemon src/server.ts -e ts --exec tsx",
+    "build": "prisma generate && tsc && tsc-alias",
+    "watch": "tsc -w"
+  },
+  "keywords": [
+    "yodl",
+    "webhooks",
+    "notifications"
+  ],
+  "author": "MihkelJ",
+  "license": "MIT",
+  "description": "Yodl Notifications",
+  "dependencies": {
+    "@types/express": "^5.0.0",
+    "@types/http-errors": "^2.0.4",
+    "@types/node": "^22.10.10",
+    "dotenv": "^16.5.0",
+    "express": "^4.21.2",
+    "express-zod-api": "^22.2.0",
+    "http-errors": "^2.0.0",
+    "typescript": "^5.7.3",
+    "viem": "^2.22.15",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9",
+    "tsc-alias": "^1.8.10",
+    "tsx": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
