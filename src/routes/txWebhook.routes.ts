@@ -1,6 +1,7 @@
 import { defaultEndpointsFactory } from 'express-zod-api';
 import createHttpError from 'http-errors';
 import { statusResponseSchema } from '../schemas/common.schemas.js';
+import { txInputSchema } from '../schemas/tx.schemas.js';
 import { openBeerTap } from '../services/blynk.service.js';
 import { fetchTransaction } from '../services/transaction.service.js';
 
@@ -99,5 +100,6 @@ export const txWebhook = defaultEndpointsFactory
       }
     },
     output: statusResponseSchema,
+    input: txInputSchema,
     description: 'Sends a transaction to the given address',
   });
