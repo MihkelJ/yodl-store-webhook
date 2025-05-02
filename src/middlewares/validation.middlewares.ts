@@ -29,7 +29,7 @@ const txValidationMiddleware = new Middleware({
 
     if (!txHash || typeof txHash !== 'string') {
       console.error('Transaction hash is not set');
-      throw createHttpError(400, 'Transaction hash is not set');
+      throw createHttpError(401, 'Transaction hash is not set');
     }
 
     const { memo, invoiceCurrency, invoiceAmount, receiverEnsPrimaryName } =
@@ -39,12 +39,12 @@ const txValidationMiddleware = new Middleware({
 
     if (!memo) {
       console.error('Transaction has no memo', input.txHash);
-      throw createHttpError(400, 'Transaction has no memo');
+      throw createHttpError(402, 'Transaction has no memo');
     }
     if (invoiceCurrency !== INVOICE_CURRENCY) {
       console.error('Invalid invoice currency', input.txHash, invoiceCurrency);
       throw createHttpError(
-        400,
+        403,
         `Invalid invoice currency: ${invoiceCurrency}`
       );
     }
@@ -56,7 +56,7 @@ const txValidationMiddleware = new Middleware({
         receiverEnsPrimaryName
       );
       throw createHttpError(
-        400,
+        404,
         `Invalid receiver ENS primary name: ${receiverEnsPrimaryName}`
       );
     }
@@ -67,7 +67,7 @@ const txValidationMiddleware = new Middleware({
 
     if (validBeerAmounts.length === 0) {
       console.error('Invalid invoice amount', input.txHash, invoiceAmountNumber);
-      throw createHttpError(400, 'Invalid invoice amount');
+      throw createHttpError(405, 'Invalid invoice amount');
     }
 
     const [beerAmount, beerValue] = validBeerAmounts[0];
