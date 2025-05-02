@@ -7,15 +7,12 @@ import { fetchTransaction } from '../services/transaction.service.js';
 const BEER_MAPPING = {
   20: {
     value: '1',
-    memo: 'beer_1',
   },
   40: {
     value: '2',
-    memo: 'beer_2',
   },
   60: {
     value: '3',
-    memo: 'beer_3',
   },
 } as const;
 
@@ -68,10 +65,7 @@ const txValidationMiddleware = new Middleware({
 
     const [beerAmount, beerValue] = validBeerAmounts[0];
 
-    if (memo !== beerValue.memo) {
-      console.error('Invalid memo for the selected beer amount', input.txHash, memo, beerValue.memo);
-      throw createHttpError(400, 'Invalid memo for the selected beer amount');
-    }
+
 
     return {
       beerAmount,
