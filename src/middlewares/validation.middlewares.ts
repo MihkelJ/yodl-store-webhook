@@ -34,9 +34,11 @@ const txValidationMiddleware = new Middleware({
     const invoiceAmountNumber = Number(invoiceAmount);
 
     if (!memo) {
+      console.error('Transaction has no memo', input.txHash);
       throw createHttpError(400, 'Transaction has no memo');
     }
     if (invoiceCurrency !== INVOICE_CURRENCY) {
+      console.error('Invalid invoice currency', input.txHash, invoiceCurrency);
       throw createHttpError(
         400,
         `Invalid invoice currency: ${invoiceCurrency}`
@@ -44,6 +46,11 @@ const txValidationMiddleware = new Middleware({
     }
 
     if (receiverEnsPrimaryName !== RECEIVER_ENS_PRIMARY_NAME) {
+      console.error(
+        'Invalid receiver ENS primary name',
+        input.txHash,
+        receiverEnsPrimaryName
+      );
       throw createHttpError(
         400,
         `Invalid receiver ENS primary name: ${receiverEnsPrimaryName}`
@@ -55,12 +62,14 @@ const txValidationMiddleware = new Middleware({
       .sort(([a], [b]) => Number(b) - Number(a));
 
     if (validBeerAmounts.length === 0) {
+      console.error('Invalid invoice amount', input.txHash, invoiceAmountNumber);
       throw createHttpError(400, 'Invalid invoice amount');
     }
 
     const [beerAmount, beerValue] = validBeerAmounts[0];
 
     if (memo !== beerValue.memo) {
+      console.error('Invalid memo for the selected beer amount', input.txHash, memo, beerValue.memo);
       throw createHttpError(400, 'Invalid memo for the selected beer amount');
     }
 

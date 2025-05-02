@@ -20,6 +20,7 @@ const authMiddleware = new Middleware({
     const signature = request.headers["x-yodl-signature"];
 
     if (!signature || !isHex(signature)) {
+      console.error("Invalid signature", signature);
       throw createHttpError(400, "Invalid signature");
     }
 
@@ -36,10 +37,14 @@ const authMiddleware = new Middleware({
         address: process.env.YODL_ADDRESS as `0x${string}`,
       });
 
-      if (!isValid) throw createHttpError(400, "Invalid signature");
+      if (!isValid) {
+        console.error("Invalid signature", signature);
+        throw createHttpError(400, "Invalid signature");
+      }
 
       return {};
     } catch (error) {
+      console.error("Signature verification failed", error);
       throw createHttpError(500, "Signature verification failed");
     }
   },
