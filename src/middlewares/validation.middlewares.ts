@@ -24,8 +24,8 @@ if (!RECEIVER_ENS_PRIMARY_NAME) {
 }
 
 const txValidationMiddleware = new Middleware({
-  handler: async ({ input, request }) => {
-    const txHash = request.headers["txhash"];
+  handler: async ({ input }) => {
+    const txHash = input.txHash;
 
     if (!txHash || typeof txHash !== 'string') {
       console.error('Transaction hash is not set');
