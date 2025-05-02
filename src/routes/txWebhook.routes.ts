@@ -1,6 +1,5 @@
 import { defaultEndpointsFactory } from 'express-zod-api';
 import createHttpError from 'http-errors';
-import txValidationMiddleware from '../middlewares/validation.middlewares.js';
 import { statusResponseSchema } from '../schemas/common.schemas.js';
 import { txInputSchema } from '../schemas/tx.schemas.js';
 import { openBeerTap } from '../services/blynk.service.js';
@@ -13,7 +12,7 @@ if (!BEER_TAP_TOKEN) {
 
 export const txWebhook = defaultEndpointsFactory
   // .addMiddleware(authMiddleware)
-  .addMiddleware(txValidationMiddleware)
+  // .addMiddleware(txValidationMiddleware)
   .build({
     method: 'post',
     handler: async ({ options }) => {
@@ -23,7 +22,7 @@ export const txWebhook = defaultEndpointsFactory
         try {
           await openBeerTap({
             token: BEER_TAP_TOKEN,
-            value: beerValue.value,
+            value: "1",
           });
         } catch (error) {
           throw createHttpError(500, 'Failed to open beer tap');
