@@ -1,6 +1,5 @@
 import { defaultEndpointsFactory } from 'express-zod-api';
 import createHttpError from 'http-errors';
-import authMiddleware from '../middlewares/auth.middlewares.js';
 import txValidationMiddleware from '../middlewares/validation.middlewares.js';
 import { statusResponseSchema } from '../schemas/common.schemas.js';
 import { txInputSchema } from '../schemas/tx.schemas.js';
@@ -13,7 +12,7 @@ if (!BEER_TAP_TOKEN) {
 }
 
 export const txWebhook = defaultEndpointsFactory
-  .addMiddleware(authMiddleware)
+  // .addMiddleware(authMiddleware)
   .addMiddleware(txValidationMiddleware)
   .build({
     method: 'post',
