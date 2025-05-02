@@ -24,9 +24,16 @@ if (!RECEIVER_ENS_PRIMARY_NAME) {
 }
 
 const txValidationMiddleware = new Middleware({
-  handler: async ({ input }) => {
+  handler: async ({ input, request }) => {
+    const txHash = request.headers["txhash"];
+
+    if (!txHash || typeof txHash !== 'string') {
+      console.error('Transaction hash is not set');
+      throw createHttpError(400, 'Transaction hash is not set');
+    }
+
     const { memo, invoiceCurrency, invoiceAmount, receiverEnsPrimaryName } =
-      await fetchTransaction(input.txHash);
+      await fetchTransaction(txHash);
 
     const invoiceAmountNumber = Number(invoiceAmount);
 
@@ -73,6 +80,9 @@ const txValidationMiddleware = new Middleware({
     };
   },
   input: txInputSchema,
+  security: {
+    and: [{ type: 'header', name: 'txHash' }],
+  },
 });
 
 export default txValidationMiddleware;
