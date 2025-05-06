@@ -1,11 +1,7 @@
 import assert from 'assert';
 import createHttpError from 'http-errors';
+import { config } from '../config/index.js';
 
-const BLYNK_SERVER = process.env.BLYNK_SERVER;
-
-if (!BLYNK_SERVER) {
-  throw new Error('Blynk server is missing');
-}
 
 interface MessageToBlynk {
   token: string;
@@ -23,7 +19,7 @@ export async function communicateWithBlynk({
   assert(value, 'value is required');
 
   const response = await fetch(
-    `${BLYNK_SERVER}/external/api/update?token=${token}&${pin}=${value}`
+    `${config.blynk.server}/external/api/update?token=${token}&${pin}=${value}`
   );
 
   if (!response.ok) {

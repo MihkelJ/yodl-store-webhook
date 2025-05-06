@@ -1,6 +1,8 @@
-import { Middleware } from "express-zod-api";
-import createHttpError from "http-errors";
-import { isHex, verifyMessage } from "viem";
+import { Middleware } from 'express-zod-api';
+import createHttpError from 'http-errors';
+import { StatusCodes } from 'http-status-codes';
+import { isHex, verifyMessage } from 'viem';
+import { config } from '../config/index.js';
 
 /**
  * Authentication middleware that verifies requests are signed by Yodl
@@ -17,39 +19,35 @@ import { isHex, verifyMessage } from "viem";
  */
 const authMiddleware = new Middleware({
   handler: async ({ request }) => {
-    const signature = request.headers["x-yodl-signature"];
+    const signature = request.headers['x-yodl-signature'];
 
-    if (!signature || !isHex(signature)) {
-      console.error("Invalid signature", signature);
-      throw createHttpError(400, "Invalid signature");
+    if (!isHex(signature)) {
+      throw createHttpError(StatusCodes.BAD_REQUEST);
     }
 
-    // Ensure the message is properly stringified and formatted
     const message =
-      typeof request.body === "string"
+      typeof request.body === 'string'
         ? request.body
         : JSON.stringify(request.body);
 
     try {
       const isValid = await verifyMessage({
         message,
-        signature: signature as `0x${string}`,
-        address: process.env.YODL_ADDRESS as `0x${string}`,
+        signature,
+        address: config.yodl.address,
       });
 
       if (!isValid) {
-        console.error("Invalid signature", signature);
-        throw createHttpError(400, "Invalid signature");
+        throw createHttpError(StatusCodes.BAD_REQUEST);
       }
 
       return {};
     } catch (error) {
-      console.error("Signature verification failed", error);
-      throw createHttpError(500, "Signature verification failed");
+      throw createHttpError(StatusCodes.BAD_REQUEST);
     }
   },
   security: {
-    and: [{ type: "header", name: "x-yodl-signature" }],
+    and: [{ type: 'header', name: 'x-yodl-signature' }],
   },
 });
 

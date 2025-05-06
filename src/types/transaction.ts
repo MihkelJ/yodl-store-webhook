@@ -1,23 +1,25 @@
+import { Address, Hex } from "viem";
+
 export interface TransactionResponse {
   payment: Payment;
 }
 
 export interface Payment {
   chainId: number;
-  txHash: string;
+  txHash: Hex;
   paymentIndex: number;
-  destinationChainId: any;
-  destinationTxHash: any;
+  destinationChainId: number;
+  destinationTxHash: Hex;
   blockTimestamp: string;
   tokenOutSymbol: string;
-  tokenOutAddress: string;
+  tokenOutAddress: Address;
   tokenOutAmountGross: string;
-  receiverAddress: string;
+  receiverAddress: Address;
   receiverEnsPrimaryName: string;
   receiverYodlConfig: ReceiverYodlConfig;
   invoiceCurrency: string;
   invoiceAmount: string;
-  senderAddress: string;
+  senderAddress: Address;
   senderEnsPrimaryName: string;
   memo: string;
 }

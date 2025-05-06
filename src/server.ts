@@ -12,6 +12,7 @@ const config = createConfig({
     level: 'silent',
     color: true,
   },
+  startupLogo: false,
 });
 
 const routing: Routing = {

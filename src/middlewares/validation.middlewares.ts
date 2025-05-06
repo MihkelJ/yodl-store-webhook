@@ -1,82 +1,64 @@
 import { Middleware } from 'express-zod-api';
 import createHttpError from 'http-errors';
+import { StatusCodes } from 'http-status-codes';
+import { config } from '../config/index.js';
 import { txInputSchema } from '../schemas/tx.schemas.js';
 import { fetchTransaction } from '../services/transaction.service.js';
 
-// Amount in BRL - how many cups of beer\
-const BEER_MAPPING = {
-  20: {
-    value: '1',
-  },
-  40: {
-    value: '2',
-  },
-  60: {
-    value: '3',
-  },
-} as const;
-
-const INVOICE_CURRENCY = 'BRL';
-const RECEIVER_ENS_PRIMARY_NAME = process.env.RECEIVER_ENS_PRIMARY_NAME;
-
-if (!RECEIVER_ENS_PRIMARY_NAME) {
-  throw new Error('RECEIVER_ENS_PRIMARY_NAME is not set');
-}
-
+/**
+ * Middleware for validating transaction inputs and determining beer amounts.
+ *
+ * This middleware:
+ * 1. Validates the provided transaction hash
+ * 2. Fetches transaction details
+ * 3. Verifies the transaction memo contains the required identifier
+ * 4. Checks that currency and receiver information match configuration
+ * 5. Determines the appropriate beer amount based on the invoice amount
+ *
+ * @returns {Object} - Contains beerAmount (invoice amount) and beerValue (quantity of beer)
+ * @throws {HttpError} - 400 if memo is missing
+ * @throws {HttpError} - 403 if memo doesn't contain identifier or currency doesn't match
+ * @throws {HttpError} - 404 if receiver ENS name doesn't match configuration
+ * @throws {HttpError} - 405 if invoice amount doesn't match any valid beer amount
+ */
 const txValidationMiddleware = new Middleware({
   handler: async ({ input }) => {
     const txHash = input.txHash;
-
-    if (!txHash || typeof txHash !== 'string') {
-      console.error('Transaction hash is not set');
-      throw createHttpError(401, 'Transaction hash is not set');
-    }
 
     const { memo, invoiceCurrency, invoiceAmount, receiverEnsPrimaryName } =
       await fetchTransaction(txHash);
 
     const invoiceAmountNumber = Number(invoiceAmount);
 
+    // TODO: Parse this with zod
     if (!memo) {
-      console.error('Transaction has no memo', input.txHash);
-      throw createHttpError(402, 'Transaction has no memo');
-    }
-    if (invoiceCurrency !== INVOICE_CURRENCY) {
-      console.error('Invalid invoice currency', input.txHash, invoiceCurrency);
-      throw createHttpError(
-        403,
-        `Invalid invoice currency: ${invoiceCurrency}`
-      );
+      throw createHttpError(StatusCodes.BAD_REQUEST);
     }
 
-    if (receiverEnsPrimaryName !== RECEIVER_ENS_PRIMARY_NAME) {
-      console.error(
-        'Invalid receiver ENS primary name',
-        input.txHash,
-        receiverEnsPrimaryName
-      );
-      throw createHttpError(
-        404,
-        `Invalid receiver ENS primary name: ${receiverEnsPrimaryName}`
-      );
+    if (!memo.includes(config.beerTap.identifier)) {
+      throw createHttpError(StatusCodes.FORBIDDEN);
+    }
+    if (invoiceCurrency !== config.beerTap.invoiceCurrency) {
+      throw createHttpError(StatusCodes.FORBIDDEN);
     }
 
-    const validBeerAmounts = Object.entries(BEER_MAPPING)
+    if (receiverEnsPrimaryName !== config.beerTap.receiverEnsPrimaryName) {
+      throw createHttpError(StatusCodes.NOT_FOUND);
+    }
+
+    const validBeerAmounts = Object.entries(config.beerTap.beerMapping)
       .filter(([amount]) => Number(amount) <= invoiceAmountNumber)
       .sort(([a], [b]) => Number(b) - Number(a));
 
     if (validBeerAmounts.length === 0) {
-      console.error('Invalid invoice amount', input.txHash, invoiceAmountNumber);
-      throw createHttpError(405, 'Invalid invoice amount');
+      throw createHttpError(StatusCodes.METHOD_NOT_ALLOWED);
     }
 
     const [beerAmount, beerValue] = validBeerAmounts[0];
 
-
-
     return {
       beerAmount,
-      beerValue,
+      beerValue, // 1 for one cup of beer, 2 for two cups of beer, etc.
     };
   },
   input: txInputSchema,

@@ -1,4 +1,5 @@
 import createHttpError from 'http-errors';
+import { ReasonPhrases } from 'http-status-codes';
 import { Payment, TransactionResponse } from '../types/transaction.js';
 
 export async function fetchTransaction(txHash: string): Promise<Payment> {
@@ -7,7 +8,10 @@ export async function fetchTransaction(txHash: string): Promise<Payment> {
   );
 
   if (!response.ok) {
-    throw createHttpError(response.status, response.statusText);
+    throw createHttpError(
+      response.status,
+      ReasonPhrases.INTERNAL_SERVER_ERROR
+    );
   }
 
   const { payment } = (await response.json()) as TransactionResponse;

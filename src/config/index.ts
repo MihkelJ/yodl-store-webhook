@@ -1,3 +1,4 @@
+import { isAddress } from 'viem';
 import { z } from 'zod';
 
 const envSchema = z.object({
@@ -6,7 +7,17 @@ const envSchema = z.object({
     .default('development'),
   PORT: z.string().transform(Number).default('3000'),
   YODL_INDEXER_URL: z.string().url(),
-  YODL_ADDRESS: z.string(),
+  YODL_ADDRESS: z.string().transform((address) => {
+    if (!isAddress(address)) {
+      throw new Error('YODL_ADDRESS is not a valid address');
+    }
+    return address;
+  }),
+  BEER_TAP_TOKEN: z.string(),
+  RECEIVER_ENS_PRIMARY_NAME: z.string(),
+  BLYNK_SERVER: z.string().url(),
+  BEER_IDENTIFIER: z.string(),
+
 });
 
 function validateEnv() {
@@ -36,5 +47,21 @@ export const config = {
   yodl: {
     indexerUrl: env.YODL_INDEXER_URL,
     address: env.YODL_ADDRESS,
+  },
+  beerTap: {
+    token: env.BEER_TAP_TOKEN,
+    receiverEnsPrimaryName: env.RECEIVER_ENS_PRIMARY_NAME,
+    identifier: env.BEER_IDENTIFIER,
+    invoiceCurrency: "BRL",
+    // 15 BRL = 1 cup of beer
+    beerMapping: {
+      15: '1',
+      30: '2',
+      45: '3',
+    } as const,
+
+  },
+  blynk: {
+    server: env.BLYNK_SERVER,
   },
 } as const;

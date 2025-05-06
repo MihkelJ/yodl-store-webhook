@@ -1,103 +1,113 @@
-# 🍺 YODL Beer Tap Webhook
+# yodl-store-webhook
 
-A specialized webhook service that connects YODL payments to your beer tap through Blynk. When someone pays you through YODL, it automatically triggers your beer tap to pour a refreshing beverage! 🍻
+A Node.js service that listens for blockchain transaction webhooks and controls a beer tap through Blynk API.
 
-## ✨ Features
+## Overview
 
-- 🍺 Automatic beer tap control via Blynk
-- 💸 YODL payment integration
-- 🔐 Secure webhook handling
-- 🛠️ Three flow settings for different pour sizes
-- 📱 Remote monitoring and control
+yodl-store-webhook is a microservice that acts as a bridge between blockchain transactions and IoT devices. It receives transaction callbacks and triggers a beer tap connected via the Blynk platform based on the transaction parameters.
 
-## 🎯 Prerequisites
+## Features
 
-Before you start, make sure you have:
+- Webhook endpoint for blockchain transaction notifications
+- Authentication and transaction validation middleware
+- Integration with Blynk IoT platform
+- Configurable beer dispensing based on transaction values
 
-- 💚 Node.js (v20 or higher)
-- 📦 npm or yarn
-- 🔌 A Blynk-compatible beer tap setup
-- 🔑 A Blynk account and device token
+## Tech Stack
 
-## 🔧 Setup Guide
+- Node.js (>=20)
+- TypeScript
+- Express.js
+- express-zod-api (for API schema validation)
+- Blynk (IoT platform)
 
-### 1. Environment Configuration
+## Prerequisites
 
-Create a `.env` file with the following variables:
+- Node.js 20 or higher
+- Yarn package manager
+- A Blynk account and configured device
+- Environment variables (see below)
 
-```bash
-# Blynk Configuration
-BLYNK_SERVER=https://your-blynk-server.com
-BEER_TAP_TOKEN=your-blynk-device-token
+## Environment Variables
 
-# Server Configuration
+```
 PORT=3000
+BLYNK_SERVER=https://blynk-cloud.com
+BEER_TAP_TOKEN=your_blynk_token
 ```
 
-### 2. Install Dependencies
+## Installation
 
 ```bash
-npm install
+# Clone the repository
+git clone https://github.com/MihkelJ/yodl-store-webhook.git
+cd yodl-store-webhook
+
+# Install dependencies
+yarn install
+
+# Build the project
+yarn build
 ```
 
-### 3. ENS Configuration
+## Development
 
-Configure your ENS text record with the `me.yodl` key. The value should be a JSON object containing:
+```bash
+# Run in development mode with hot reloading
+yarn dev
 
+# Build the project
+yarn build
+
+# Start the server
+yarn start
+```
+
+## API Endpoints
+
+### POST /v1/callback
+
+Webhook endpoint that receives transaction data and triggers the beer tap.
+
+**Authentication required**
+
+**Request Body:**
 ```json
 {
-  "tokenSymbols": ["USDT", "USDC"],
-  "webhooks": [
-    "https://your-server.com/callback"
-  ]
+  "beerValue": "1" // Possible values: "1", "2", "3"
 }
 ```
 
-### 4. Blynk Setup
-
-1. Create a Blynk account at [Blynk.io](https://blynk.io)
-2. Set up your beer tap device in the Blynk app
-3. Configure virtual pin `v2` for beer tap control
-4. Note down your device token and server URL
-
-## 🍺 Beer Tap Control
-
-The service supports three different flow settings:
-
-- `1`: Light flow (small pour)
-- `2`: Medium flow (standard pour)
-- `3`: Heavy flow (large pour)
-
-When a payment is received, the service automatically triggers the beer tap with the appropriate flow setting.
-
-## 🚀 Running the Service
-
-```bash
-# Development mode
-npm run dev
-
-# Production mode
-npm start
+**Response:**
+```json
+{
+  "status": "OK"
+}
 ```
 
-## 🛠️ Troubleshooting
+### GET /v1/health
 
-### Beer Tap Not Responding?
+Health check endpoint.
 
-1. Check your Blynk configuration:
-   - Verify server URL and device token
-   - Ensure device is online
-   - Confirm virtual pin `v2` is properly configured
+**Response:**
+```json
+{
+  "status": "OK"
+}
+```
 
-2. Check webhook configuration:
-   - Verify ENS text record is correctly set
-   - Ensure webhook URL is accessible
-   - Check server logs for errors
+## Docker
 
-## 📜 License
+A `docker-compose.yml` file is provided for easy deployment:
 
-MIT License - Feel free to use and modify as needed!
+```bash
+docker-compose up -d
+```
 
----
+## License
 
-Made with 🍺 and a passion for automated beverages
+MIT
+
+## Author
+
+MihkelJ
