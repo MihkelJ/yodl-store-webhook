@@ -18,10 +18,11 @@ import { config } from '../config/index.js';
  * @returns {Promise<{}>} Empty object if verification succeeds
  */
 const authMiddleware = new Middleware({
-  handler: async ({ request }) => {
+  handler: async ({ request, logger }) => {
     const signature = request.headers['x-yodl-signature'];
 
     if (!isHex(signature)) {
+      logger.error('Invalid signature', { signature });
       throw createHttpError(StatusCodes.BAD_REQUEST);
     }
 
@@ -31,6 +32,7 @@ const authMiddleware = new Middleware({
         : JSON.stringify(request.body);
 
     try {
+      logger.info('Verifying signature', { signature });
       const isValid = await verifyMessage({
         message,
         signature,
@@ -38,11 +40,13 @@ const authMiddleware = new Middleware({
       });
 
       if (!isValid) {
+        logger.error('Signature verification failed', { signature });
         throw createHttpError(StatusCodes.BAD_REQUEST);
       }
 
       return {};
     } catch (error) {
+      logger.error('Signature verification failed', { error });
       throw createHttpError(StatusCodes.BAD_REQUEST);
     }
   },

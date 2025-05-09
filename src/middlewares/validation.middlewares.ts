@@ -22,7 +22,7 @@ import { fetchTransaction } from '../services/transaction.service.js';
  * @throws {HttpError} - 405 if invoice amount doesn't match any valid beer amount
  */
 const txValidationMiddleware = new Middleware({
-  handler: async ({ input }) => {
+  handler: async ({ input, logger }) => {
     const txHash = input.txHash;
 
     const { memo, invoiceCurrency, invoiceAmount, receiverEnsPrimaryName } =
@@ -32,17 +32,27 @@ const txValidationMiddleware = new Middleware({
 
     // TODO: Parse this with zod
     if (!memo) {
+      logger.error('No memo found', { txHash });
       throw createHttpError(StatusCodes.BAD_REQUEST);
     }
 
     if (!memo.includes(config.beerTap.identifier)) {
+      logger.error('Invalid memo', { memo, txHash });
       throw createHttpError(StatusCodes.FORBIDDEN);
     }
     if (invoiceCurrency !== config.beerTap.invoiceCurrency) {
+      logger.error('Invalid invoice currency', {
+        invoiceCurrency,
+        txHash,
+      });
       throw createHttpError(StatusCodes.FORBIDDEN);
     }
 
     if (receiverEnsPrimaryName !== config.beerTap.receiverEnsPrimaryName) {
+      logger.error('Invalid receiver ENS name', {
+        receiverEnsPrimaryName,
+        txHash,
+      });
       throw createHttpError(StatusCodes.NOT_FOUND);
     }
 
@@ -51,6 +61,10 @@ const txValidationMiddleware = new Middleware({
       .sort(([a], [b]) => Number(b) - Number(a));
 
     if (validBeerAmounts.length === 0) {
+      logger.error('No valid beer amount found', {
+        invoiceAmountNumber,
+        txHash,
+      });
       throw createHttpError(StatusCodes.METHOD_NOT_ALLOWED);
     }
 

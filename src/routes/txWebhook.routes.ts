@@ -21,7 +21,7 @@ export const txWebhook = defaultEndpointsFactory
             value: beerValue,
           });
 
-          if (response.status !== 200) {
+          if (!response.ok) {
             logger.error('Failed to open beer tap', { response });
             throw createHttpError(
               StatusCodes.INTERNAL_SERVER_ERROR,
