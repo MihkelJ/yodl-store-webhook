@@ -1,10 +1,10 @@
 # yodl-store-webhook
 
-A Node.js service that listens for blockchain transaction webhooks and controls a beer tap through Blynk API.
+A Node.js microservice that connects blockchain payments to physical beer dispensing through IoT integration.
 
 ## Overview
 
-yodl-store-webhook is a microservice that acts as a bridge between blockchain transactions and IoT devices. It receives transaction callbacks and triggers a beer tap connected via the Blynk platform based on the transaction parameters.
+yodl-store-webhook connects blockchain transactions to physical IoT devices. It processes payment notifications from the YODL platform and activates a beer tap through the Blynk IoT platform, dispensing beer based on transaction amounts.
 
 ## Features
 
@@ -26,14 +26,42 @@ yodl-store-webhook is a microservice that acts as a bridge between blockchain tr
 - Node.js 20 or higher
 - Yarn package manager
 - A Blynk account and configured device
+- YODL platform webhook endpoint credentials
 - Environment variables (see below)
+
+## Quick Start
+
+```bash
+# Clone and set up
+git clone https://github.com/MihkelJ/yodl-store-webhook.git
+cd yodl-store-webhook
+yarn install
+
+# Configure environment variables
+cp .env.example .env
+# Edit .env with your specific values
+
+# Start the service
+yarn build && yarn start
+```
 
 ## Environment Variables
 
+Create a `.env` file in the root directory with the following variables:
+
 ```
-PORT=3000
-BLYNK_SERVER=https://blynk-cloud.com
-BEER_TAP_TOKEN=your_blynk_token
+# Yodl Configuration
+YODL_INDEXER_URL="https://tx.yodl.me/api"
+YODL_ADDRESS=0x66a31Aa400dd8C11f9af054c3b7bCcB783B4901B
+
+# BLYNK
+BLYNK_SERVER="https://blynk.cloud"
+BEER_TAP_TOKEN=XXX
+
+# BEER
+BEER_IDENTIFIER="Chopp"
+RECEIVER_ENS_PRIMARY_NAME=marketplace.ipecity.eth
+INVOICE_CURRENCY=BRL
 ```
 
 ## Installation
@@ -61,47 +89,6 @@ yarn build
 
 # Start the server
 yarn start
-```
-
-## API Endpoints
-
-### POST /v1/callback
-
-Webhook endpoint that receives transaction data and triggers the beer tap.
-
-**Authentication required**
-
-**Request Body:**
-```json
-{
-  "beerValue": "1" // Possible values: "1", "2", "3"
-}
-```
-
-**Response:**
-```json
-{
-  "status": "OK"
-}
-```
-
-### GET /v1/health
-
-Health check endpoint.
-
-**Response:**
-```json
-{
-  "status": "OK"
-}
-```
-
-## Docker
-
-A `docker-compose.yml` file is provided for easy deployment:
-
-```bash
-docker-compose up -d
 ```
 
 ## License

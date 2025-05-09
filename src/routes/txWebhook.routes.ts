@@ -8,7 +8,6 @@ import { statusResponseSchema } from '../schemas/common.schemas.js';
 import { txInputSchema } from '../schemas/tx.schemas.js';
 import { openBeerTap } from '../services/blynk.service.js';
 
-
 export const txWebhook = defaultEndpointsFactory
   .addMiddleware(authMiddleware)
   .addMiddleware(txValidationMiddleware)
@@ -22,15 +21,14 @@ export const txWebhook = defaultEndpointsFactory
             value: beerValue,
           });
           return {
-            status: ReasonPhrases.OK
-          }
+            status: ReasonPhrases.OK,
+          };
         } catch (error) {
           throw createHttpError(
             StatusCodes.INTERNAL_SERVER_ERROR,
             ReasonPhrases.INTERNAL_SERVER_ERROR
           );
         }
-
       } catch (error) {
         throw createHttpError(
           StatusCodes.INTERNAL_SERVER_ERROR,
