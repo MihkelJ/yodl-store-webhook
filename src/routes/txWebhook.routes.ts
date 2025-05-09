@@ -11,10 +11,10 @@ export const txWebhook = defaultEndpointsFactory
   .addMiddleware(txValidationMiddleware)
   .build({
     method: 'post',
-    handler: async ({ options: { beerValue } }) => {
+    handler: async ({ options: { beerValue }, logger }) => {
       try {
         try {
-          console.log('Opening beer tap');
+          logger.info('Opening beer tap');
           // await openBeerTap({
           //   token: config.beerTap.token,
           //   value: beerValue,

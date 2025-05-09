@@ -9,7 +9,7 @@ const config = createConfig({
   },
   cors: false,
   logger: {
-    level: 'silent',
+    level: 'debug',
     color: true,
   },
   startupLogo: false,
