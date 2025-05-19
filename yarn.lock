@@ -127,17 +127,17 @@
   resolved "https://registry.yarnpkg.com/@esbuild/win32-x64/-/win32-x64-0.23.1.tgz#81fd50d11e2c32b2d6241470e3185b70c7b30699"
   integrity sha512-BHpFFeslkWrXWyUPnbKm+xYYVYruCinGcftSBaa8zoF9hZO4BcSCFUvHVTtzpIY6YzUnYtuEhZ+C9iEXjxnasg==
 
-"@noble/curves@1.8.1", "@noble/curves@^1.6.0", "@noble/curves@~1.8.1":
-  version "1.8.1"
-  resolved "https://registry.npmjs.org/@noble/curves/-/curves-1.8.1.tgz"
-  integrity sha512-warwspo+UYUPep0Q+vtdVB4Ugn8GGQj8iyB3gnRWsztmUHTI3S1nhdiWNsPUGL0vud7JlRRk1XEu7Lq1KGTnMQ==
+"@noble/curves@1.8.2", "@noble/curves@^1.6.0", "@noble/curves@~1.8.1":
+  version "1.8.2"
+  resolved "https://registry.yarnpkg.com/@noble/curves/-/curves-1.8.2.tgz#8f24c037795e22b90ae29e222a856294c1d9ffc7"
+  integrity sha512-vnI7V6lFNe0tLAuJMu+2sX+FcL14TaCWy1qiczg1VwRmPrpQCdq5ESXQMqUc2tluRNf6irBXrWbl1mGN8uaU/g==
   dependencies:
-    "@noble/hashes" "1.7.1"
+    "@noble/hashes" "1.7.2"
 
-"@noble/hashes@1.7.1", "@noble/hashes@^1.5.0", "@noble/hashes@~1.7.1":
-  version "1.7.1"
-  resolved "https://registry.npmjs.org/@noble/hashes/-/hashes-1.7.1.tgz"
-  integrity sha512-B8XBPsn4vT/KJAGqDzbwztd+6Yte3P4V7iafm24bxgDe/mlRuK6xmWPuCNrKt2vDafZ8MfJLlchDG/vYafQEjQ==
+"@noble/hashes@1.7.2", "@noble/hashes@^1.5.0", "@noble/hashes@~1.7.1":
+  version "1.7.2"
+  resolved "https://registry.yarnpkg.com/@noble/hashes/-/hashes-1.7.2.tgz#d53c65a21658fb02f3303e7ee3ba89d6754c64b4"
+  integrity sha512-biZ0NUSxyjLLqo6KxEJ1b+C2NAx0wtDoFvCaXHGgUkeHzf3Xc1xKumFKREuT7f7DARNZ/slvYUwFG6B0f2b6hQ==
 
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"
@@ -779,10 +779,10 @@ is-number@^7.0.0:
   resolved "https://registry.npmjs.org/is-number/-/is-number-7.0.0.tgz"
   integrity sha512-41Cifkg6e8TylSpdtTpeLVMqvSBEVzTttHvERD741+pnZ8ANv0004MRL43QKPDlK9cGvNp6NZWZUBlbGXYxxng==
 
-isows@1.0.6:
-  version "1.0.6"
-  resolved "https://registry.npmjs.org/isows/-/isows-1.0.6.tgz"
-  integrity sha512-lPHCayd40oW98/I0uvgaHKWCSvkzY27LjWLbtzOm64yQ+G3Q5npjjbdppU65iZXkK1Zt+kH9pfegli0AYfwYYw==
+isows@1.0.7:
+  version "1.0.7"
+  resolved "https://registry.yarnpkg.com/isows/-/isows-1.0.7.tgz#1c06400b7eed216fbba3bcbd68f12490fc342915"
+  integrity sha512-I1fSfDCZL5P0v33sVqeTDSpcstAg/N+wF5HS033mogOVIp4B+oHC7oOCsA3axAbBSGTJ8QubbNmnIRN/h8U7hg==
 
 math-intrinsics@^1.1.0:
   version "1.1.0"
@@ -917,10 +917,10 @@ openapi3-ts@^4.4.0:
   dependencies:
     yaml "^2.5.0"
 
-ox@0.6.7:
-  version "0.6.7"
-  resolved "https://registry.npmjs.org/ox/-/ox-0.6.7.tgz"
-  integrity sha512-17Gk/eFsFRAZ80p5eKqv89a57uXjd3NgIf1CaXojATPBuujVc/fQSVhBeAU9JCRB+k7J50WQAyWTxK19T9GgbA==
+ox@0.6.9:
+  version "0.6.9"
+  resolved "https://registry.yarnpkg.com/ox/-/ox-0.6.9.tgz#da1ee04fa10de30c8d04c15bfb80fe58b1f554bd"
+  integrity sha512-wi5ShvzE4eOcTwQVsIPdFr+8ycyX+5le/96iAJutaZAvCes1J0+RvpEPg5QDPDiaR0XQQAvZVl7AwqQcINuUug==
   dependencies:
     "@adraffy/ens-normalize" "^1.10.1"
     "@noble/curves" "^1.6.0"
@@ -1221,24 +1221,24 @@ vary@~1.1.2:
   resolved "https://registry.npmjs.org/vary/-/vary-1.1.2.tgz"
   integrity sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==
 
-viem@^2.22.15:
-  version "2.22.15"
-  resolved "https://registry.yarnpkg.com/viem/-/viem-2.22.15.tgz#a217834f4c7c44c49abc67fee62bf11e9d1a566c"
-  integrity sha512-7m5T/Emaj/C59jsRxYfZvMvckRRC4+rV+MVufKelxPS5DMhVR4z3Bk6CG8z+eQkpLVearqKBiPvvreLI0AesgA==
+viem@^2.29.4:
+  version "2.29.4"
+  resolved "https://registry.yarnpkg.com/viem/-/viem-2.29.4.tgz#f727c868056198de854a7c18f672a7ead7875226"
+  integrity sha512-Dhyae+w1LKKpYVXypGjBnZ3WU5EHl/Uip5RtVwVRYSVxD5VvHzqKzIfbFU1KP4vnnh3++ZNgLjBY/kVT/tPrrg==
   dependencies:
-    "@noble/curves" "1.8.1"
-    "@noble/hashes" "1.7.1"
+    "@noble/curves" "1.8.2"
+    "@noble/hashes" "1.7.2"
     "@scure/bip32" "1.6.2"
     "@scure/bip39" "1.5.4"
     abitype "1.0.8"
-    isows "1.0.6"
-    ox "0.6.7"
-    ws "8.18.0"
+    isows "1.0.7"
+    ox "0.6.9"
+    ws "8.18.1"
 
-ws@8.18.0:
-  version "8.18.0"
-  resolved "https://registry.npmjs.org/ws/-/ws-8.18.0.tgz"
-  integrity sha512-8VbfWfHLbbwu3+N6OKsOMpBdT4kXPDDB9cJk2bJ6mh9ucxdlnNvH1e+roYkKmN9Nxw2yjz7VzeO9oOz2zJ04Pw==
+ws@8.18.1:
+  version "8.18.1"
+  resolved "https://registry.yarnpkg.com/ws/-/ws-8.18.1.tgz#ea131d3784e1dfdff91adb0a4a116b127515e3cb"
+  integrity sha512-RKW2aJZMXeMxVpnZ6bck+RswznaxmzdULiBr6KY7XkTnW8uvt0iT9H5DkHUChXrc+uurzwa0rVI16n/Xzjdz1w==
 
 yaml@^2.5.0:
   version "2.7.0"
