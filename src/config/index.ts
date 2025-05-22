@@ -17,7 +17,6 @@ const envSchema = z.object({
   RECEIVER_ENS_PRIMARY_NAME: z.string(),
   BLYNK_SERVER: z.string().url(),
   BEER_IDENTIFIER: z.string(),
-
 });
 
 function validateEnv() {
@@ -52,14 +51,13 @@ export const config = {
     token: env.BEER_TAP_TOKEN,
     receiverEnsPrimaryName: env.RECEIVER_ENS_PRIMARY_NAME,
     identifier: env.BEER_IDENTIFIER,
-    invoiceCurrency: "BRL",
-    // 15 BRL = 1 cup of beer
+    invoiceCurrency: 'BRL',
+    // 1 BRL = 1 cup of beer, happy BTC pizza day
     beerMapping: {
-      15: '1',
-      30: '2',
-      45: '3',
+      1: '1',
+      2: '2',
+      3: '3',
     } as const,
-
   },
   blynk: {
     server: env.BLYNK_SERVER,
