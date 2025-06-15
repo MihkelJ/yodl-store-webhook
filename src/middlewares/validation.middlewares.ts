@@ -17,30 +17,27 @@ import { fetchTransaction } from '../services/transaction.service.js';
  *
  * @returns {Object} - Contains beerAmount (invoice amount) and beerValue (quantity of beer)
  * @throws {HttpError} - 400 if memo is missing
- * @throws {HttpError} - 403 if memo doesn't contain identifier or currency doesn't match
+ * @throws {HttpError} - 404 if memo doesn't contain identifier or currency doesn't match
  * @throws {HttpError} - 404 if receiver ENS name doesn't match configuration
- * @throws {HttpError} - 405 if invoice amount doesn't match any valid beer amount
+ * @throws {HttpError} - 402 if invoice amount doesn't match any valid beer amount
  */
 const txValidationMiddleware = new Middleware({
-  handler: async ({ input, logger }) => {
-    const txHash = input.txHash;
+  handler: async ({ input: { txHash }, logger }) => {
+    const transaction = await fetchTransaction(txHash);
 
     const { memo, invoiceCurrency, invoiceAmount, receiverEnsPrimaryName } =
-      await fetchTransaction(txHash);
+      transaction;
 
-    const invoiceAmountNumber = Number(invoiceAmount);
+    const validMethod = config.beerTaps.find((tap) =>
+      memo.includes(tap.transactionMemo)
+    );
 
-    // TODO: Parse this with zod
-    if (!memo) {
-      logger.error('No memo found', { txHash });
+    if (!validMethod) {
+      logger.error('Method not found', { memo, txHash });
       throw createHttpError(StatusCodes.BAD_REQUEST);
     }
 
-    if (!memo.includes(config.beerTap.identifier)) {
-      logger.error('Invalid memo', { memo, txHash });
-      throw createHttpError(StatusCodes.FORBIDDEN);
-    }
-    if (invoiceCurrency !== config.beerTap.invoiceCurrency) {
+    if (invoiceCurrency !== validMethod.transactionCurrency) {
       logger.error('Invalid invoice currency', {
         invoiceCurrency,
         txHash,
@@ -48,7 +45,7 @@ const txValidationMiddleware = new Middleware({
       throw createHttpError(StatusCodes.FORBIDDEN);
     }
 
-    if (receiverEnsPrimaryName !== config.beerTap.receiverEnsPrimaryName) {
+    if (receiverEnsPrimaryName !== validMethod.transactionReceiverEns) {
       logger.error('Invalid receiver ENS name', {
         receiverEnsPrimaryName,
         txHash,
@@ -56,23 +53,17 @@ const txValidationMiddleware = new Middleware({
       throw createHttpError(StatusCodes.NOT_FOUND);
     }
 
-    const validBeerAmounts = Object.entries(config.beerTap.beerMapping)
-      .filter(([amount]) => Number(amount) <= invoiceAmountNumber)
-      .sort(([a], [b]) => Number(b) - Number(a));
-
-    if (validBeerAmounts.length === 0) {
-      logger.error('No valid beer amount found', {
-        invoiceAmountNumber,
+    if (Number(invoiceAmount) < Number(validMethod.transactionAmount)) {
+      logger.error('Invalid invoice amount', {
+        invoiceAmount,
+        requiredAmount: validMethod.transactionAmount,
         txHash,
       });
-      throw createHttpError(StatusCodes.METHOD_NOT_ALLOWED);
+      throw createHttpError(StatusCodes.PAYMENT_REQUIRED);
     }
 
-    const [beerAmount, beerValue] = validBeerAmounts[0];
-
     return {
-      beerAmount,
-      beerValue, // 1 for one cup of beer, 2 for two cups of beer, etc.
+      validMethod,
     };
   },
   input: txInputSchema,

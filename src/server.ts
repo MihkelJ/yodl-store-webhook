@@ -1,15 +1,16 @@
 import 'dotenv/config';
 import { createConfig, createServer, Routing } from 'express-zod-api';
+import { config as appConfig } from './config/index.js';
 import { healthEndpoint } from './routes/health.routes.js';
 import { txWebhook } from './routes/txWebhook.routes.js';
 
 const config = createConfig({
   http: {
-    listen: process.env.PORT || 3000,
+    listen: appConfig.port,
   },
   cors: false,
   logger: {
-    level: 'debug',
+    level: 'info',
     color: true,
   },
   startupLogo: false,
@@ -22,7 +23,18 @@ const routing: Routing = {
   },
 };
 
-const server = createServer(config, routing);
+const server = createServer(config, routing).then((server) => {
+  server.logger.info('Server configuration:', {
+    yodl: appConfig.yodl,
+    beerTaps: appConfig.beerTaps.map((tap) => ({
+      transactionReceiverEns: tap.transactionReceiverEns,
+      transactionMemo: tap.transactionMemo,
+      transactionCurrency: tap.transactionCurrency,
+      transactionAmount: tap.transactionAmount,
+      blynkServer: tap.blynkServer,
+    })),
+  });
+});
 
 server.catch((err) => {
   console.error('Server error:', err);

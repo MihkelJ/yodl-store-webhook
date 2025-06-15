@@ -1,6 +1,20 @@
 import { isAddress } from 'viem';
 import { z } from 'zod';
 
+const beerTapSchema = z.object({
+  transactionReceiverEns: z.string(),
+  transactionMemo: z.string(),
+  transactionCurrency: z.string(),
+  transactionAmount: z.string(),
+
+  blynkDeviceToken: z.string(), // blynk device token
+  blynkDevicePin: z.string().refine((pin) => pin.startsWith('V'), {
+    message: 'Pin must start with V',
+  }), // pin to be used to trigger the beer tap
+  blynkDevicePinValue: z.string(), // value to be used to trigger the beer tap
+  blynkServer: z.string().url().optional().default('https://blynk.cloud'), // blynk server url
+});
+
 const envSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
@@ -13,10 +27,17 @@ const envSchema = z.object({
     }
     return address;
   }),
-  BEER_TAP_TOKEN: z.string(),
-  RECEIVER_ENS_PRIMARY_NAME: z.string(),
-  BLYNK_SERVER: z.string().url(),
-  BEER_IDENTIFIER: z.string(),
+  BEER_TAPS: z
+    .string()
+    .transform((str) => {
+      try {
+        return JSON.parse(str);
+      } catch (e) {
+        throw new Error('BEER_TAPS must be a valid JSON array');
+      }
+    })
+    .pipe(z.array(beerTapSchema))
+    .default('[]'),
 });
 
 function validateEnv() {
@@ -47,19 +68,5 @@ export const config = {
     indexerUrl: env.YODL_INDEXER_URL,
     address: env.YODL_ADDRESS,
   },
-  beerTap: {
-    token: env.BEER_TAP_TOKEN,
-    receiverEnsPrimaryName: env.RECEIVER_ENS_PRIMARY_NAME,
-    identifier: env.BEER_IDENTIFIER,
-    invoiceCurrency: 'BRL',
-    // 1 BRL = 1 cup of beer, happy BTC pizza day
-    beerMapping: {
-      1: '1',
-      2: '2',
-      3: '3',
-    } as const,
-  },
-  blynk: {
-    server: env.BLYNK_SERVER,
-  },
+  beerTaps: env.BEER_TAPS,
 } as const;
