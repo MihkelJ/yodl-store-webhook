@@ -1,36 +1,53 @@
-# yodl-store-webhook
+# 🍺 yodl-store-webhook
 
-A Node.js microservice that connects blockchain payments to physical beer dispensing through IoT integration.
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-4.x-blue.svg)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+> A Node.js microservice that connects blockchain payments to physical beer dispensing through IoT integration. 🚀
+
+## 📑 Table of Contents
+
+- [Overview](#overview)
+- [Features](#features-)
+- [Tech Stack](#tech-stack-)
+- [Prerequisites](#prerequisites-)
+- [Quick Start](#quick-start-)
+- [Configuration](#configuration-)
+- [Development](#development-)
+- [API Documentation](#api-documentation-)
+- [License](#license-)
+- [Author](#author-)
 
 ## Overview
 
-yodl-store-webhook connects blockchain transactions to physical IoT devices. It processes payment notifications from the YODL platform and activates beer taps through the Blynk IoT platform, dispensing beer based on transaction amounts.
+yodl-store-webhook connects blockchain transactions to physical IoT devices. It processes payment notifications from the YODL platform and activates beer taps through the Blynk IoT platform, dispensing beer based on transaction amounts. 🎯
 
-## Features
+## Features ✨
 
-- Webhook endpoint for blockchain transaction notifications
-- Authentication and transaction validation middleware
-- Integration with Blynk IoT platform
-- Configurable beer taps with custom transaction validation rules
-- Support for multiple beer taps with different configurations
+- Webhook endpoint for blockchain transaction notifications 📡
+- Authentication and transaction validation middleware 🔒
+- Integration with Blynk IoT platform 🤖
+- Configurable beer taps with custom transaction validation rules ⚙️
+- Support for multiple beer taps with different configurations 🎛️
 
-## Tech Stack
+## Tech Stack 🛠️
 
-- Node.js (>=20)
-- TypeScript
-- Express.js
-- express-zod-api (for API schema validation)
-- Blynk (IoT platform)
+- Node.js (>=20) ⚡
+- TypeScript 📘
+- Express.js 🚂
+- express-zod-api (for API schema validation) ✅
+- Blynk (IoT platform) 🔌
 
-## Prerequisites
+## Prerequisites 📋
 
-- Node.js 20 or higher
-- Yarn package manager
-- A Blynk account and configured device(s)
-- YODL platform webhook endpoint credentials
-- Environment variables (see below)
+- Node.js 20 or higher ⚡
+- Yarn package manager 🧶
+- A Blynk account and configured device(s) 🤖
+- YODL platform webhook endpoint credentials 🔑
+- Environment variables (see below) ⚙️
 
-## Quick Start
+## Quick Start 🚀
 
 ```bash
 # Clone and set up
@@ -46,11 +63,11 @@ cp .env.example .env
 yarn build && yarn start
 ```
 
-## Environment Variables
+## Configuration ⚙️
 
 Create a `.env` file in the root directory with the following variables:
 
-```
+```env
 # Server Configuration
 NODE_ENV=development
 PORT=3000
@@ -74,18 +91,20 @@ BEER_TAPS='[
 ]'
 ```
 
-Each beer tap configuration requires:
+### Beer Tap Configuration Parameters 🍺
 
-- `transactionReceiverEns`: The ENS name that should receive the transaction
-- `transactionMemo`: The identifier that must be present in the transaction memo
-- `transactionCurrency`: The expected currency for the transaction
-- `transactionAmount`: The minimum amount required for the transaction
-- `blynkDeviceToken`: Your Blynk device token
-- `blynkDevicePin`: The Blynk pin to control (must start with 'V')
-- `blynkDevicePinValue`: The value to send to the Blynk pin
-- `blynkServer`: The Blynk server URL (optional, defaults to https://blynk.cloud)
+| Parameter                | Description                                                    | Required |
+| ------------------------ | -------------------------------------------------------------- | -------- |
+| `transactionReceiverEns` | The ENS name that should receive the transaction 📝            | Yes      |
+| `transactionMemo`        | The identifier that must be present in the transaction memo 🏷️ | Yes      |
+| `transactionCurrency`    | The expected currency for the transaction 💰                   | Yes      |
+| `transactionAmount`      | The minimum amount required for the transaction 💵             | Yes      |
+| `blynkDeviceToken`       | Your Blynk device token 🔑                                     | Yes      |
+| `blynkDevicePin`         | The Blynk pin to control (must start with 'V') 📌              | Yes      |
+| `blynkDevicePinValue`    | The value to send to the Blynk pin 🔢                          | Yes      |
+| `blynkServer`            | The Blynk server URL 🌐                                        | No       |
 
-## Development
+## Development 👨‍💻
 
 ```bash
 # Run in development mode with hot reloading
@@ -98,26 +117,28 @@ yarn build
 yarn start
 ```
 
-## API Endpoints
+## API Documentation 🌐
 
 ### POST /v1/callback
 
-Webhook endpoint for processing YODL transactions. Requires:
+Webhook endpoint for processing YODL transactions.
 
-- `txHash` header with the transaction hash
-- Authentication (configured through middleware)
+#### Required Headers
 
-The endpoint validates:
+- `txHash`: Transaction hash 🔑
+- Authentication token (configured through middleware) 🔒
 
-- Transaction memo contains the configured identifier
-- Transaction currency matches the configuration
-- Receiver ENS name matches the configuration
-- Transaction amount meets the minimum requirement
+#### Validation Checks ✅
 
-## License
+- Transaction memo contains the configured identifier 📝
+- Transaction currency matches the configuration 💰
+- Receiver ENS name matches the configuration 📋
+- Transaction amount meets the minimum requirement 💵
 
-MIT
+## License 📄
 
-## Author
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-MihkelJ
+## Author 👨‍💻
+
+[MihkelJ](https://github.com/MihkelJ)
