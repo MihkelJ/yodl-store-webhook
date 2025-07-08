@@ -6,7 +6,7 @@ import { txWebhook } from './routes/txWebhook.routes.js';
 
 const config = createConfig({
   http: {
-    listen: appConfig.port,
+    listen: appConfig.server.port,
   },
   cors: false,
   logger: {
