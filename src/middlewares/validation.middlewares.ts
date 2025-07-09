@@ -64,6 +64,7 @@ const txValidationMiddleware = new Middleware({
 
     return {
       validMethod,
+      transaction,
     };
   },
   input: txInputSchema,

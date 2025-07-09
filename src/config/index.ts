@@ -1,5 +1,6 @@
 import { isAddress } from 'viem';
 import { z } from 'zod';
+import { RetryStrategy } from '../types/queue.js';
 
 const beerTapSchema = z.object({
   transactionReceiverEns: z.string(),
@@ -38,6 +39,25 @@ const envSchema = z.object({
     })
     .pipe(z.array(beerTapSchema))
     .default('[]'),
+  
+  // Redis configuration
+  REDIS_URL: z.string().url(),
+  
+  // Development configuration
+  DEV_DISABLE_AUTH: z.string().transform((val) => val === 'true').default('false'),
+  DEV_DISABLE_STATUS_POLLING: z.string().transform((val) => val === 'true').default('false'),
+  
+  // Queue configuration
+  QUEUE_MAX_ATTEMPTS: z.string().transform(Number).pipe(z.number().min(1).max(10)).default('3'),
+  QUEUE_BASE_DELAY: z.string().transform(Number).pipe(z.number().min(100).max(60000)).default('1000'),
+  QUEUE_MAX_DELAY: z.string().transform(Number).pipe(z.number().min(1000).max(300000)).default('30000'),
+  QUEUE_CONCURRENCY: z.string().transform(Number).pipe(z.number().min(1).max(10)).default('1'),
+  QUEUE_POLLING_INTERVAL: z.string().transform(Number).pipe(z.number().min(1000).max(60000)).default('5000'),
+  QUEUE_RETRY_STRATEGY: z.string().default('exponential').refine((strategy) => 
+    Object.values(RetryStrategy).includes(strategy as RetryStrategy), {
+    message: 'Invalid retry strategy',
+  }),
+  QUEUE_DEAD_LETTER_ENABLED: z.string().transform((val) => val === 'true').default('true'),
 });
 
 function validateEnv() {
@@ -69,4 +89,20 @@ export const config = {
     address: env.YODL_ADDRESS,
   },
   beerTaps: env.BEER_TAPS,
+  redis: {
+    url: env.REDIS_URL,
+  },
+  dev: {
+    disableAuth: env.DEV_DISABLE_AUTH,
+    disableStatusPolling: env.DEV_DISABLE_STATUS_POLLING,
+  },
+  queue: {
+    maxAttempts: env.QUEUE_MAX_ATTEMPTS,
+    baseDelay: env.QUEUE_BASE_DELAY,
+    maxDelay: env.QUEUE_MAX_DELAY,
+    concurrency: env.QUEUE_CONCURRENCY,
+    pollingInterval: env.QUEUE_POLLING_INTERVAL,
+    retryStrategy: env.QUEUE_RETRY_STRATEGY as RetryStrategy,
+    deadLetterEnabled: env.QUEUE_DEAD_LETTER_ENABLED,
+  },
 } as const;

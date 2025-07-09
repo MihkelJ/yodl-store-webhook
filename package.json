@@ -26,6 +26,7 @@
     "express-zod-api": "^22.2.0",
     "http-errors": "^2.0.0",
     "http-status-codes": "^2.3.0",
+    "redis": "^4.7.0",
     "typescript": "^5.7.3",
     "viem": "^2.22.15",
     "zod": "^3.24.1"
