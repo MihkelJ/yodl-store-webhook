@@ -3,17 +3,14 @@ import { z } from 'zod';
 import { RetryStrategy } from '../types/queue.js';
 
 const beerTapSchema = z.object({
+  id: z.string().optional(),
   transactionReceiverEns: z.string(),
   transactionMemo: z.string(),
   transactionCurrency: z.string(),
   transactionAmount: z.string(),
-
-  blynkDeviceToken: z.string(), // blynk device token
-  blynkDevicePin: z.string().refine((pin) => pin.startsWith('V'), {
-    message: 'Pin must start with V',
-  }), // pin to be used to trigger the beer tap
-  blynkDevicePinValue: z.string(), // value to be used to trigger the beer tap
-  blynkServer: z.string().url().optional().default('https://blynk.cloud'), // blynk server url
+  thingsBoardDeviceToken: z.string(),
+  thingsBoardCupSize: z.number().positive().default(500),
+  thingsBoardServerUrl: z.string().url().optional().default('https://thingsboard.cloud'),
 });
 
 const envSchema = z.object({
@@ -39,25 +36,65 @@ const envSchema = z.object({
     })
     .pipe(z.array(beerTapSchema))
     .default('[]'),
-  
+
   // Redis configuration
   REDIS_URL: z.string().url(),
-  
+
+  // ThingsBoard configuration
+  THINGSBOARD_SERVER_URL: z.string().url().default('https://thingsboard.cloud'),
+  THINGSBOARD_USERNAME: z.string().optional(),
+  THINGSBOARD_PASSWORD: z.string().optional(),
+
   // Development configuration
-  DEV_DISABLE_AUTH: z.string().transform((val) => val === 'true').default('false'),
-  DEV_DISABLE_STATUS_POLLING: z.string().transform((val) => val === 'true').default('false'),
-  
+  DEV_DISABLE_AUTH: z
+    .string()
+    .transform((val) => val === 'true')
+    .default('false'),
+  DEV_DISABLE_STATUS_POLLING: z
+    .string()
+    .transform((val) => val === 'true')
+    .default('false'),
+
   // Queue configuration
-  QUEUE_MAX_ATTEMPTS: z.string().transform(Number).pipe(z.number().min(1).max(10)).default('3'),
-  QUEUE_BASE_DELAY: z.string().transform(Number).pipe(z.number().min(100).max(60000)).default('1000'),
-  QUEUE_MAX_DELAY: z.string().transform(Number).pipe(z.number().min(1000).max(300000)).default('30000'),
-  QUEUE_CONCURRENCY: z.string().transform(Number).pipe(z.number().min(1).max(10)).default('1'),
-  QUEUE_POLLING_INTERVAL: z.string().transform(Number).pipe(z.number().min(1000).max(60000)).default('5000'),
-  QUEUE_RETRY_STRATEGY: z.string().default('exponential').refine((strategy) => 
-    Object.values(RetryStrategy).includes(strategy as RetryStrategy), {
-    message: 'Invalid retry strategy',
-  }),
-  QUEUE_DEAD_LETTER_ENABLED: z.string().transform((val) => val === 'true').default('true'),
+  QUEUE_MAX_ATTEMPTS: z
+    .string()
+    .transform(Number)
+    .pipe(z.number().min(1).max(10))
+    .default('3'),
+  QUEUE_BASE_DELAY: z
+    .string()
+    .transform(Number)
+    .pipe(z.number().min(100).max(60000))
+    .default('1000'),
+  QUEUE_MAX_DELAY: z
+    .string()
+    .transform(Number)
+    .pipe(z.number().min(1000).max(300000))
+    .default('30000'),
+  QUEUE_CONCURRENCY: z
+    .string()
+    .transform(Number)
+    .pipe(z.number().min(1).max(10))
+    .default('1'),
+  QUEUE_POLLING_INTERVAL: z
+    .string()
+    .transform(Number)
+    .pipe(z.number().min(1000).max(60000))
+    .default('5000'),
+  QUEUE_RETRY_STRATEGY: z
+    .string()
+    .default('exponential')
+    .refine(
+      (strategy) =>
+        Object.values(RetryStrategy).includes(strategy as RetryStrategy),
+      {
+        message: 'Invalid retry strategy',
+      }
+    ),
+  QUEUE_DEAD_LETTER_ENABLED: z
+    .string()
+    .transform((val) => val === 'true')
+    .default('true'),
 });
 
 function validateEnv() {
@@ -91,6 +128,11 @@ export const config = {
   beerTaps: env.BEER_TAPS,
   redis: {
     url: env.REDIS_URL,
+  },
+  thingsBoard: {
+    serverUrl: env.THINGSBOARD_SERVER_URL,
+    username: env.THINGSBOARD_USERNAME,
+    password: env.THINGSBOARD_PASSWORD,
   },
   dev: {
     disableAuth: env.DEV_DISABLE_AUTH,

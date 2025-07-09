@@ -3,10 +3,11 @@ import {
   QueueStatus,
   StatusChangeEvent,
   StatusChangeHandler,
-  BlynkStatusResponse,
+  ThingsBoardStatusResponse,
 } from '../types/queue.js';
-import { readBeerTapStatus, setBeerTapStatus } from './blynk.service.js';
+import { readBeerTapStatus, setBeerTapStatus } from './thingsboard-robust.service.js';
 import { RedisService } from './redis.service.js';
+import { config as appConfig } from '../config/index.js';
 
 export class StatusManager extends EventEmitter {
   private static instance: StatusManager;
@@ -16,8 +17,8 @@ export class StatusManager extends EventEmitter {
   private readonly statusCacheTtl = 30; // 30 seconds TTL for status cache
   private isPolling = false;
   
-  // Request deduplication - key: "token:server", value: Promise
-  private pendingStatusRequests = new Map<string, Promise<BlynkStatusResponse>>();
+  // Request deduplication - key: "deviceToken:serverUrl", value: Promise
+  private pendingStatusRequests = new Map<string, Promise<ThingsBoardStatusResponse>>();
 
   private constructor(redis: RedisService, pollingIntervalMs = 5000) {
     super();
@@ -68,8 +69,8 @@ export class StatusManager extends EventEmitter {
   }
 
   // Request deduplication and caching method
-  private async getBlynkStatusWithDedup(beerTapId: string, token: string, server: string): Promise<BlynkStatusResponse> {
-    const requestKey = `${token}:${server}`;
+  private async getThingsBoardStatusWithDedup(beerTapId: string, deviceToken: string, serverUrl: string): Promise<ThingsBoardStatusResponse> {
+    const requestKey = `${deviceToken}:${serverUrl}`;
     const cacheKey = `status:${beerTapId}`;
     
     // First check if we have a cached status (valid for some time)
@@ -85,13 +86,16 @@ export class StatusManager extends EventEmitter {
     
     // If there's already a pending request for this token/server, return the same promise
     if (this.pendingStatusRequests.has(requestKey)) {
-      console.log(`Reusing pending Blynk status request for token ${token.substring(0, 8)}...`);
+      console.log(`Reusing pending ThingsBoard status request for token ${deviceToken.substring(0, 8)}...`);
       return this.pendingStatusRequests.get(requestKey)!;
     }
     
     // Create new request
-    console.log(`Making new Blynk status request for token ${token.substring(0, 8)}...`);
-    const requestPromise = readBeerTapStatus({ token, server });
+    console.log(`Making new ThingsBoard status request for token ${deviceToken.substring(0, 8)}...`);
+    const requestPromise = readBeerTapStatus({ 
+      deviceToken, 
+      config: appConfig.thingsBoard
+    });
     
     // Store the promise
     this.pendingStatusRequests.set(requestKey, requestPromise);
@@ -159,12 +163,16 @@ export class StatusManager extends EventEmitter {
   public async setBeerTapStatus(
     beerTapId: string,
     status: QueueStatus.READY | QueueStatus.BUSY,
-    token: string,
-    server: string
+    deviceToken: string,
+    serverUrl: string
   ): Promise<void> {
     try {
-      // Update Blynk device first
-      await setBeerTapStatus({ token, server, status });
+      // Update ThingsBoard device first
+      await setBeerTapStatus({ 
+        deviceToken, 
+        config: appConfig.thingsBoard, 
+        status 
+      });
 
       // Then update our cache
       await this.updateBeerTapStatus(beerTapId, status);
@@ -191,8 +199,8 @@ export class StatusManager extends EventEmitter {
 
   public async waitForBeerTapReady(
     beerTapId: string,
-    token: string,
-    server: string,
+    deviceToken: string,
+    serverUrl: string,
     timeoutMs = 30000
   ): Promise<boolean> {
     const startTime = Date.now();
@@ -200,17 +208,17 @@ export class StatusManager extends EventEmitter {
 
     while (Date.now() - startTime < timeoutMs) {
       try {
-        // Fetch current status from Blynk (with deduplication)
-        const statusResponse = await this.getBlynkStatusWithDedup(beerTapId, token, server);
+        // Fetch current status from ThingsBoard (with deduplication)
+        const statusResponse = await this.getThingsBoardStatusWithDedup(beerTapId, deviceToken, serverUrl);
         
         if (statusResponse.success) {
           await this.updateBeerTapStatus(beerTapId, statusResponse.status);
           
           if (statusResponse.status === QueueStatus.READY) {
-            console.log(`Beer tap ${beerTapId} is ready (V5=1)!`);
+            console.log(`Beer tap ${beerTapId} is ready (ready=1)!`);
             return true;
           } else {
-            console.log(`Beer tap ${beerTapId} is busy (V5=0, status: ${statusResponse.status}), waiting 5 seconds...`);
+            console.log(`Beer tap ${beerTapId} is busy (ready=0, status: ${statusResponse.status}), waiting 5 seconds...`);
           }
         } else {
           console.error(`Failed to check beer tap ${beerTapId} status:`, statusResponse.error);
@@ -276,10 +284,10 @@ export class StatusManager extends EventEmitter {
 
   public async forcePollBeerTapStatus(
     beerTapId: string,
-    token: string,
-    server: string
+    deviceToken: string,
+    serverUrl: string
   ): Promise<QueueStatus> {
-    const statusResponse = await this.getBlynkStatusWithDedup(beerTapId, token, server);
+    const statusResponse = await this.getThingsBoardStatusWithDedup(beerTapId, deviceToken, serverUrl);
 
     if (statusResponse.success) {
       await this.updateBeerTapStatus(beerTapId, statusResponse.status);

@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Dependencies
 - **Runtime**: Express.js server with express-zod-api for API validation
 - **Blockchain**: Uses `viem` for Ethereum signature verification
-- **IoT**: Integrates with Blynk platform for hardware control
+- **IoT**: Integrates with ThingsBoard platform for hardware control
 - **Validation**: Zod schemas for environment and request validation
 - **Queue**: Redis for persistence and job queue management
 
@@ -27,7 +27,7 @@ This is a webhook microservice that processes blockchain payments and triggers I
 2. **Authentication Middleware** verifies requests are signed by YODL platform
 3. **Validation Middleware** validates transaction meets beer tap requirements
 4. **Queue System** enqueues transactions for processing
-5. **Status Manager** monitors beer tap availability via Blynk V5 pin
+5. **Status Manager** monitors beer tap availability via ThingsBoard telemetry
 6. **Queue Integration** processes items when beer taps are ready
 
 ### Key Components
@@ -35,7 +35,7 @@ This is a webhook microservice that processes blockchain payments and triggers I
 #### Configuration (`src/config/index.ts`)
 - Environment validation using Zod schemas
 - Beer tap configuration with transaction validation rules
-- YODL platform settings and Blynk device parameters
+- YODL platform settings and ThingsBoard device parameters
 
 #### Middleware Chain
 - **Auth Middleware**: Verifies `x-yodl-signature` header using viem's `verifyMessage`
@@ -43,7 +43,7 @@ This is a webhook microservice that processes blockchain payments and triggers I
 
 #### Services
 - **Transaction Service**: Fetches transaction details from YODL indexer API
-- **Blynk Service**: Sends HTTP requests to Blynk cloud to control IoT devices
+- **ThingsBoard Service**: Sends HTTP requests to ThingsBoard cloud to control IoT devices
 - **Redis Service**: Manages queue persistence and pub/sub for real-time updates
 - **Status Service**: Monitors beer tap availability with caching and deduplication
 - **Queue Service**: Handles FIFO processing with retry logic and concurrency control
@@ -55,9 +55,9 @@ Each beer tap requires:
 - `transactionMemo`: Required text in transaction memo
 - `transactionCurrency`: Expected currency (e.g., "BRL")
 - `transactionAmount`: Minimum payment amount
-- `blynkDeviceToken`: Blynk device authentication token
-- `blynkDevicePin`: Virtual pin (must start with 'V')
-- `blynkDevicePinValue`: Value to send to pin
+- `thingsBoardDeviceToken`: ThingsBoard device access token
+- `thingsBoardCupSize`: Cup size in ml (default: 500)
+- `thingsBoardServerUrl`: ThingsBoard server URL (default: https://thingsboard.cloud)
 
 ### Environment Variables
 Required variables are defined in the config with Zod validation:
@@ -73,7 +73,7 @@ Required variables are defined in the config with Zod validation:
 - `src/config/` - Environment validation and configuration
 - `src/routes/` - API endpoint definitions (health check and webhook)
 - `src/middlewares/` - Authentication and validation middleware
-- `src/services/` - External API communication (YODL, Blynk, Redis, Queue)
+- `src/services/` - External API communication (YODL, ThingsBoard, Redis, Queue)
 - `src/schemas/` - Zod validation schemas
 - `src/types/` - TypeScript type definitions
 - `docker-compose.yml` - Redis container configuration

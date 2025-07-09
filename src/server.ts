@@ -40,11 +40,14 @@ async function startServer() {
         url: appConfig.redis.url,
       },
       beerTaps: appConfig.beerTaps.map((tap, index) => ({
-        id: `beer-tap-${index}`,
+        id: tap.id || `beer-tap-${index}`,
         transactionReceiverEns: tap.transactionReceiverEns,
         transactionMemo: tap.transactionMemo,
         transactionCurrency: tap.transactionCurrency,
         transactionAmount: tap.transactionAmount,
+        thingsBoardDeviceToken: tap.thingsBoardDeviceToken?.substring(0, 8) + '...',
+        thingsBoardCupSize: tap.thingsBoardCupSize,
+        thingsBoardServerUrl: tap.thingsBoardServerUrl,
       })),
     });
 

@@ -3,6 +3,7 @@ import { RedisService } from './redis.service.js';
 import { StatusManager } from './status.service.js';
 import { QueueIntegrationService } from './queue-integration.service.js';
 import { QueueConfig } from '../types/queue.js';
+import { destroyThingsBoardServices } from './thingsboard-robust.service.js';
 
 export class QueueManagerService {
   private static instance: QueueManagerService;
@@ -44,7 +45,7 @@ export class QueueManagerService {
     
     // Transform beer tap configs to include IDs
     const beerTapConfigs = config.beerTaps.map((tap, index) => ({
-      id: `beer-tap-${index}`,
+      id: tap.id || `beer-tap-${index}`,
       ...tap,
     }));
     
@@ -64,6 +65,7 @@ export class QueueManagerService {
     
     await this.queueIntegration.destroy();
     await this.statusManager.destroy();
+    await destroyThingsBoardServices();
     await this.redis.disconnect();
     
     this.isInitialized = false;

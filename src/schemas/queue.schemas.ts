@@ -47,7 +47,7 @@ export const statusChangeEventSchema = z.object({
   timestamp: z.date(),
 });
 
-export const blynkStatusResponseSchema = z.object({
+export const thingsBoardStatusResponseSchema = z.object({
   status: queueStatusSchema,
   timestamp: z.date(),
   success: z.boolean(),
@@ -107,12 +107,9 @@ export const beerTapConfigSchema = z.object({
   transactionMemo: z.string().min(1),
   transactionCurrency: z.string().min(1),
   transactionAmount: z.string().min(1),
-  blynkDeviceToken: z.string().min(1),
-  blynkDevicePin: z.string().refine((pin) => pin.startsWith('V'), {
-    message: 'Pin must start with V',
-  }),
-  blynkDevicePinValue: z.string().min(1),
-  blynkServer: z.string().url().default('https://blynk.cloud'),
+  thingsBoardDeviceToken: z.string().min(1),
+  thingsBoardCupSize: z.number().positive().default(500),
+  thingsBoardServerUrl: z.string().url().default('https://thingsboard.cloud'),
   // Queue-specific settings
   queueConfig: queueConfigSchema.optional(),
   statusPollingInterval: z.number().min(1000).max(60000).default(5000),

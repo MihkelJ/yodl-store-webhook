@@ -68,7 +68,7 @@ export interface QueueMetrics {
   lastProcessedAt?: Date;
 }
 
-export interface BlynkStatusResponse {
+export interface ThingsBoardStatusResponse {
   status: QueueStatus;
   timestamp: Date;
   success: boolean;

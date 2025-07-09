@@ -2,7 +2,7 @@ import { EventEmitter } from 'events';
 import { QueueService } from './queue.service.js';
 import { StatusManager } from './status.service.js';
 import { RedisService } from './redis.service.js';
-import { communicateWithBlynk } from './blynk.service.js';
+import { triggerBeerTap } from './thingsboard-robust.service.js';
 import { 
   BeerTapQueueItem, 
   QueueEvent, 
@@ -10,6 +10,7 @@ import {
   StatusChangeEvent,
   QueueConfig 
 } from '../types/queue.js';
+import { config as appConfig } from '../config/index.js';
 
 interface BeerTapConfig {
   id: string;
@@ -17,10 +18,9 @@ interface BeerTapConfig {
   transactionMemo: string;
   transactionCurrency: string;
   transactionAmount: string;
-  blynkDeviceToken: string;
-  blynkDevicePin: string;
-  blynkDevicePinValue: string;
-  blynkServer: string;
+  thingsBoardDeviceToken: string;
+  thingsBoardCupSize: number;
+  thingsBoardServerUrl: string;
 }
 
 export class QueueIntegrationService extends EventEmitter {
@@ -76,8 +76,8 @@ export class QueueIntegrationService extends EventEmitter {
     statusManagerPrototype.getBeerTapConfigs = () => {
       return Array.from(this.beerTapConfigs.values()).map(config => ({
         id: config.id,
-        token: config.blynkDeviceToken,
-        server: config.blynkServer,
+        deviceToken: config.thingsBoardDeviceToken,
+        serverUrl: config.thingsBoardServerUrl,
       }));
     };
   }
@@ -153,8 +153,8 @@ export class QueueIntegrationService extends EventEmitter {
       console.log(`Waiting for beer tap ${beerTapId} to be ready before processing item ${event.itemId}...`);
       const isReady = await this.statusManager.waitForBeerTapReady(
         beerTapId,
-        config.blynkDeviceToken,
-        config.blynkServer,
+        config.thingsBoardDeviceToken,
+        config.thingsBoardServerUrl,
         60000 // 60 second timeout
       );
 
@@ -164,13 +164,12 @@ export class QueueIntegrationService extends EventEmitter {
 
       console.log(`Beer tap ${beerTapId} is ready, triggering for item ${event.itemId}`);
 
-      // Trigger the beer tap (send the configured value to the configured pin)
+      // Trigger the beer tap (send RPC command with cup size)
       // The device will automatically set itself to BUSY when it starts dispensing
-      await communicateWithBlynk({
-        token: config.blynkDeviceToken,
-        pin: config.blynkDevicePin,
-        value: config.blynkDevicePinValue,
-        server: config.blynkServer,
+      await triggerBeerTap({
+        deviceToken: config.thingsBoardDeviceToken,
+        config: appConfig.thingsBoard,
+        cupSize: config.thingsBoardCupSize,
       });
 
       console.log(`Successfully triggered beer tap ${beerTapId} for transaction ${event.itemId}`);
@@ -276,8 +275,8 @@ export class QueueIntegrationService extends EventEmitter {
 
     return await this.statusManager.forcePollBeerTapStatus(
       beerTapId,
-      config.blynkDeviceToken,
-      config.blynkServer
+      config.thingsBoardDeviceToken,
+      config.thingsBoardServerUrl
     );
   }
 
