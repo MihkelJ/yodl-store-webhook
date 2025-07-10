@@ -30,16 +30,14 @@ function initializeServices(config: ThingsBoardConfig) {
     return;
   }
 
-  if (config.username && config.password) {
-    try {
-      authService = new ThingsBoardAuthService(config.serverUrl, config.username, config.password);
-      deviceService = new ThingsBoardDeviceService(authService);
-      console.log('ThingsBoard services initialized with JWT authentication');
-    } catch (error) {
-      console.warn('Failed to initialize ThingsBoard JWT services:', error);
-      authService = null;
-      deviceService = null;
-    }
+  try {
+    authService = new ThingsBoardAuthService(config.serverUrl, config.username, config.password);
+    deviceService = new ThingsBoardDeviceService(authService);
+    console.log('ThingsBoard services initialized with JWT authentication');
+  } catch (error) {
+    console.warn('Failed to initialize ThingsBoard JWT services:', error);
+    authService = null;
+    deviceService = null;
   }
 }
 
@@ -104,7 +102,10 @@ export async function readFromThingsBoard({
     );
 
     if (!response.ok) {
-      throw createHttpError(response.status, `ThingsBoard telemetry API error: ${response.status} ${response.statusText}`);
+      throw createHttpError(
+        response.status,
+        `ThingsBoard telemetry API error: ${response.status} ${response.statusText}`
+      );
     }
 
     const telemetryData = await response.json();
