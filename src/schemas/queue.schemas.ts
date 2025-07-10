@@ -107,7 +107,7 @@ export const beerTapConfigSchema = z.object({
   transactionMemo: z.string().min(1),
   transactionCurrency: z.string().min(1),
   transactionAmount: z.string().min(1),
-  thingsBoardDeviceToken: z.string().min(1),
+  thingsBoardDeviceId: z.string().min(1),
   thingsBoardCupSize: z.number().positive().default(500),
   thingsBoardServerUrl: z.string().url().default('https://thingsboard.cloud'),
   // Queue-specific settings

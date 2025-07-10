@@ -3,7 +3,7 @@ import { createConfig, createServer, Routing } from 'express-zod-api';
 import { config as appConfig } from './config/index.js';
 import { healthEndpoint } from './routes/health.routes.js';
 import { txWebhook } from './routes/txWebhook.routes.js';
-import { QueueManagerService } from './services/queue-manager.service.js';
+import { QueueManagerService } from './services/queue/queue-manager.service.js';
 
 const config = createConfig({
   http: {
@@ -45,7 +45,7 @@ async function startServer() {
         transactionMemo: tap.transactionMemo,
         transactionCurrency: tap.transactionCurrency,
         transactionAmount: tap.transactionAmount,
-        thingsBoardDeviceToken: tap.thingsBoardDeviceToken?.substring(0, 8) + '...',
+        thingsBoardDeviceId: tap.thingsBoardDeviceId?.substring(0, 8) + '...',
         thingsBoardCupSize: tap.thingsBoardCupSize,
         thingsBoardServerUrl: tap.thingsBoardServerUrl,
       })),

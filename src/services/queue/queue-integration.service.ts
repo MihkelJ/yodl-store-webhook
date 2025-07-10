@@ -1,10 +1,10 @@
 import { EventEmitter } from 'events';
+import { config as appConfig } from '../../config/index.js';
+import { BeerTapQueueItem, QueueConfig, QueueEvent, QueueStatus, StatusChangeEvent } from '../../types/queue.js';
+import { RedisService } from '../redis.service.js';
+import { StatusManager } from '../status.service.js';
+import { triggerBeerTap } from '../thingsboard/thingsboard-robust.service.js';
 import { QueueService } from './queue.service.js';
-import { StatusManager } from './status.service.js';
-import { RedisService } from './redis.service.js';
-import { triggerBeerTap } from './thingsboard-robust.service.js';
-import { BeerTapQueueItem, QueueEvent, QueueStatus, StatusChangeEvent, QueueConfig } from '../types/queue.js';
-import { config as appConfig } from '../config/index.js';
 
 interface BeerTapConfig {
   id: string;
@@ -12,7 +12,7 @@ interface BeerTapConfig {
   transactionMemo: string;
   transactionCurrency: string;
   transactionAmount: string;
-  thingsBoardDeviceToken: string;
+  thingsBoardDeviceId: string;
   thingsBoardCupSize: number;
   thingsBoardServerUrl: string;
 }
@@ -70,7 +70,7 @@ export class QueueIntegrationService extends EventEmitter {
     statusManagerPrototype.getBeerTapConfigs = () => {
       return Array.from(this.beerTapConfigs.values()).map(config => ({
         id: config.id,
-        deviceToken: config.thingsBoardDeviceToken,
+        deviceId: config.thingsBoardDeviceId,
         serverUrl: config.thingsBoardServerUrl,
       }));
     };
@@ -142,7 +142,7 @@ export class QueueIntegrationService extends EventEmitter {
       console.log(`Waiting for beer tap ${beerTapId} to be ready before processing item ${event.itemId}...`);
       const isReady = await this.statusManager.waitForBeerTapReady(
         beerTapId,
-        config.thingsBoardDeviceToken,
+        config.thingsBoardDeviceId,
         config.thingsBoardServerUrl,
         60000 // 60 second timeout
       );
@@ -155,11 +155,15 @@ export class QueueIntegrationService extends EventEmitter {
 
       // Trigger the beer tap (send RPC command with cup size)
       // The device will automatically set itself to BUSY when it starts dispensing
-      await triggerBeerTap({
-        deviceToken: config.thingsBoardDeviceToken,
-        config: appConfig.thingsBoard,
-        cupSize: config.thingsBoardCupSize,
-      });
+      await triggerBeerTap(
+        config.thingsBoardDeviceId,
+        config.thingsBoardCupSize,
+        {
+          serverUrl: appConfig.thingsBoard.serverUrl,
+          username: appConfig.thingsBoard.username!,
+          password: appConfig.thingsBoard.password!,
+        }
+      );
 
       console.log(`Successfully triggered beer tap ${beerTapId} for transaction ${event.itemId}`);
 
@@ -263,7 +267,7 @@ export class QueueIntegrationService extends EventEmitter {
 
     return await this.statusManager.forcePollBeerTapStatus(
       beerTapId,
-      config.thingsBoardDeviceToken,
+      config.thingsBoardDeviceId,
       config.thingsBoardServerUrl
     );
   }

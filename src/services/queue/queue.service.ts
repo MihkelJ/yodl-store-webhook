@@ -1,18 +1,16 @@
-import { EventEmitter } from 'events';
 import { randomUUID } from 'crypto';
+import { EventEmitter } from 'events';
 import {
-  QueueItem,
   QueueConfig,
-  QueueStatus,
-  RetryStrategy,
   QueueEvent,
   QueueEventHandler,
-  QueueProcessingResult,
+  QueueItem,
   QueueMetrics,
-  BeerTapQueueItem,
-} from '../types/queue.js';
-import { RedisService } from './redis.service.js';
-import { StatusManager } from './status.service.js';
+  QueueProcessingResult,
+  RetryStrategy,
+} from '../../types/queue.js';
+import { RedisService } from '../redis.service.js';
+import { StatusManager } from '../status.service.js';
 
 export class QueueService<T = any> extends EventEmitter {
   private redis: RedisService;

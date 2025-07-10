@@ -3,7 +3,7 @@ import createHttpError from 'http-errors';
 import { StatusCodes } from 'http-status-codes';
 import { config } from '../config/index.js';
 import { txInputSchema } from '../schemas/tx.schemas.js';
-import { fetchTransaction } from '../services/transaction.service.js';
+import { fetchTransaction } from '../services/thingsboard/transaction.service.js';
 
 /**
  * Middleware for validating transaction inputs and determining beer amounts.

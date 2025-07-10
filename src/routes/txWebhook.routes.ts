@@ -5,7 +5,7 @@ import authMiddleware from '../middlewares/auth.middlewares.js';
 import txValidationMiddleware from '../middlewares/validation.middlewares.js';
 import { statusResponseSchema } from '../schemas/common.schemas.js';
 import { txInputSchema } from '../schemas/tx.schemas.js';
-import { QueueManagerService } from '../services/queue-manager.service.js';
+import { QueueManagerService } from '../services/queue/queue-manager.service.js';
 
 export const txWebhook = defaultEndpointsFactory
   .addMiddleware(authMiddleware)

@@ -1,9 +1,7 @@
-import { config } from '../config/index.js';
-import { RedisService } from './redis.service.js';
-import { StatusManager } from './status.service.js';
+import { config } from '../../config/index.js';
+import { RedisService } from '../redis.service.js';
+import { StatusManager } from '../status.service.js';
 import { QueueIntegrationService } from './queue-integration.service.js';
-import { QueueConfig } from '../types/queue.js';
-import { destroyThingsBoardServices } from './thingsboard-robust.service.js';
 
 export class QueueManagerService {
   private static instance: QueueManagerService;
@@ -65,7 +63,6 @@ export class QueueManagerService {
 
     await this.queueIntegration.destroy();
     await this.statusManager.destroy();
-    await destroyThingsBoardServices();
     await this.redis.disconnect();
 
     this.isInitialized = false;

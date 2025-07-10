@@ -20,13 +20,17 @@ export class ThingsBoardAuthService {
   private refreshTimer: NodeJS.Timeout | null = null;
   private isRefreshing = false;
 
-  private constructor(credentials: ThingsBoardCredentials) {
-    this.credentials = credentials;
+  constructor(serverUrl: string, username: string, password: string) {
+    this.credentials = { serverUrl, username, password };
   }
 
   public static getInstance(credentials: ThingsBoardCredentials): ThingsBoardAuthService {
     if (!ThingsBoardAuthService.instance) {
-      ThingsBoardAuthService.instance = new ThingsBoardAuthService(credentials);
+      ThingsBoardAuthService.instance = new ThingsBoardAuthService(
+        credentials.serverUrl,
+        credentials.username,
+        credentials.password
+      );
     }
     return ThingsBoardAuthService.instance;
   }

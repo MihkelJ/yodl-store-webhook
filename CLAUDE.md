@@ -63,7 +63,7 @@ Each beer tap requires:
 - `transactionMemo`: Required text in transaction memo
 - `transactionCurrency`: Expected currency (e.g., "BRL")
 - `transactionAmount`: Minimum payment amount
-- `thingsBoardDeviceToken`: ThingsBoard device access token
+- `thingsBoardDeviceId`: ThingsBoard device ID (UUID format)
 - `thingsBoardCupSize`: Cup size in ml (default: 500)
 - `thingsBoardServerUrl`: ThingsBoard server URL (default: https://thingsboard.cloud)
 

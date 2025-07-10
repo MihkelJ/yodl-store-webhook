@@ -18,7 +18,7 @@ export class ThingsBoardDeviceService {
   private authService: ThingsBoardAuthService;
   private deviceCache = new Map<string, DeviceInfo>(); // accessToken -> DeviceInfo
 
-  private constructor(authService: ThingsBoardAuthService) {
+  constructor(authService: ThingsBoardAuthService) {
     this.authService = authService;
   }
 
@@ -86,7 +86,7 @@ export class ThingsBoardDeviceService {
       const response = await this.authService.makeAuthenticatedRequest(`/api/device/${deviceId}/credentials`);
 
       if (!response.ok) {
-        if (response.status === 404) {
+        if (response.status === 404 || response.status === 400) {
           return null;
         }
         throw new Error(`Failed to get device credentials: ${response.status} ${response.statusText}`);

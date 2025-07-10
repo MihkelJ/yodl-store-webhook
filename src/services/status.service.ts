@@ -1,8 +1,8 @@
 import { EventEmitter } from 'events';
-import { QueueStatus, StatusChangeEvent, StatusChangeHandler, ThingsBoardStatusResponse } from '../types/queue.js';
-import { readBeerTapStatus, setBeerTapStatus } from './thingsboard-robust.service.js';
-import { RedisService } from './redis.service.js';
 import { config as appConfig } from '../config/index.js';
+import { QueueStatus, StatusChangeEvent, StatusChangeHandler, ThingsBoardStatusResponse } from '../types/queue.js';
+import { RedisService } from './redis.service.js';
+import { readBeerTapStatus } from './thingsboard/thingsboard-robust.service.js';
 
 export class StatusManager extends EventEmitter {
   private static instance: StatusManager;
@@ -63,10 +63,10 @@ export class StatusManager extends EventEmitter {
   // Request deduplication and caching method
   private async getThingsBoardStatusWithDedup(
     beerTapId: string,
-    deviceToken: string,
+    deviceId: string,
     serverUrl: string
   ): Promise<ThingsBoardStatusResponse> {
-    const requestKey = `${deviceToken}:${serverUrl}`;
+    const requestKey = `${deviceId}:${serverUrl}`;
     const cacheKey = `status:${beerTapId}`;
 
     // First check if we have a cached status (valid for some time)
@@ -82,22 +82,38 @@ export class StatusManager extends EventEmitter {
 
     // If there's already a pending request for this token/server, return the same promise
     if (this.pendingStatusRequests.has(requestKey)) {
-      console.log(`Reusing pending ThingsBoard status request for token ${deviceToken.substring(0, 8)}...`);
+      console.log(`Reusing pending ThingsBoard status request for device ${deviceId.substring(0, 8)}...`);
       return this.pendingStatusRequests.get(requestKey)!;
     }
 
     // Create new request
-    console.log(`Making new ThingsBoard status request for token ${deviceToken.substring(0, 8)}...`);
-    const requestPromise = readBeerTapStatus({
-      deviceToken,
-      config: appConfig.thingsBoard,
-    });
+    console.log(`Making new ThingsBoard status request for device ${deviceId.substring(0, 8)}...`);
+    const requestPromise = readBeerTapStatus(
+      deviceId,
+      {
+        serverUrl: appConfig.thingsBoard.serverUrl,
+        username: appConfig.thingsBoard.username!,
+        password: appConfig.thingsBoard.password!,
+      }
+    );
+
+    // Create a promise that transforms the result
+    const transformedPromise = requestPromise.then(result => ({
+      status: result.status,
+      timestamp: result.timestamp,
+      success: true,
+    })).catch(error => ({
+      status: QueueStatus.ERROR,
+      timestamp: new Date(),
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }));
 
     // Store the promise
-    this.pendingStatusRequests.set(requestKey, requestPromise);
+    this.pendingStatusRequests.set(requestKey, transformedPromise);
 
     try {
-      const result = await requestPromise;
+      const result = await transformedPromise;
 
       // Cache the result if successful
       if (result.success) {
@@ -155,14 +171,7 @@ export class StatusManager extends EventEmitter {
     serverUrl: string
   ): Promise<void> {
     try {
-      // Update ThingsBoard device first
-      await setBeerTapStatus({
-        deviceToken,
-        config: appConfig.thingsBoard,
-        status,
-      });
-
-      // Then update our cache
+      // Update our cache directly (ThingsBoard device status is read-only in our new implementation)
       await this.updateBeerTapStatus(beerTapId, status);
 
       console.log(`Successfully set beer tap ${beerTapId} status to ${status}`);
@@ -187,7 +196,7 @@ export class StatusManager extends EventEmitter {
 
   public async waitForBeerTapReady(
     beerTapId: string,
-    deviceToken: string,
+    deviceId: string,
     serverUrl: string,
     timeoutMs = 30000
   ): Promise<boolean> {
@@ -197,7 +206,7 @@ export class StatusManager extends EventEmitter {
     while (Date.now() - startTime < timeoutMs) {
       try {
         // Fetch current status from ThingsBoard (with deduplication)
-        const statusResponse = await this.getThingsBoardStatusWithDedup(beerTapId, deviceToken, serverUrl);
+        const statusResponse = await this.getThingsBoardStatusWithDedup(beerTapId, deviceId, serverUrl);
 
         if (statusResponse.success) {
           await this.updateBeerTapStatus(beerTapId, statusResponse.status);
@@ -272,8 +281,8 @@ export class StatusManager extends EventEmitter {
     return statuses;
   }
 
-  public async forcePollBeerTapStatus(beerTapId: string, deviceToken: string, serverUrl: string): Promise<QueueStatus> {
-    const statusResponse = await this.getThingsBoardStatusWithDedup(beerTapId, deviceToken, serverUrl);
+  public async forcePollBeerTapStatus(beerTapId: string, deviceId: string, serverUrl: string): Promise<QueueStatus> {
+    const statusResponse = await this.getThingsBoardStatusWithDedup(beerTapId, deviceId, serverUrl);
 
     if (statusResponse.success) {
       await this.updateBeerTapStatus(beerTapId, statusResponse.status);
