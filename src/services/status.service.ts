@@ -9,7 +9,7 @@ export class StatusManager extends EventEmitter {
   private redis: RedisService;
   private statusPollingInterval: NodeJS.Timeout | null = null;
   private readonly pollingIntervalMs: number;
-  private readonly statusCacheTtl = 30; // 30 seconds TTL for status cache
+  private readonly statusCacheTtl = 2; // 2 seconds TTL for status cache
   private isPolling = false;
 
   // Request deduplication - key: "deviceToken:serverUrl", value: Promise
@@ -49,7 +49,52 @@ export class StatusManager extends EventEmitter {
     await this.redis.disconnect();
   }
 
-  // Status polling is now disabled - using on-demand checking instead
+  // Conditional status polling - only when queues have items
+  public async startConditionalPolling(): Promise<void> {
+    if (this.isPolling) {
+      return;
+    }
+
+    console.log('Starting conditional status polling every', this.pollingIntervalMs, 'ms');
+    this.isPolling = true;
+    
+    this.statusPollingInterval = setInterval(async () => {
+      await this.pollAllBeerTapStatuses();
+    }, this.pollingIntervalMs);
+  }
+
+  public async stopConditionalPolling(): Promise<void> {
+    if (!this.isPolling) {
+      return;
+    }
+
+    console.log('Stopping conditional status polling');
+    this.stopStatusPolling();
+  }
+
+  private async pollAllBeerTapStatuses(): Promise<void> {
+    try {
+      // Poll all configured beer taps
+      for (const beerTap of appConfig.beerTaps) {
+        const beerTapId = beerTap.id || `${beerTap.transactionReceiverEns}-${beerTap.transactionCurrency}`;
+        
+        // Only poll if we don't have a fresh cached status
+        const cachedStatus = await this.redis.getStatus(`status:${beerTapId}`);
+        if (cachedStatus === null) {
+          // Fire and forget - let the deduplication handle concurrent requests
+          this.getThingsBoardStatusWithDedup(
+            beerTapId,
+            beerTap.thingsBoardDeviceId,
+            beerTap.thingsBoardServerUrl
+          ).catch(error => {
+            console.error(`Error polling beer tap ${beerTapId}:`, error);
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error during conditional polling:', error);
+    }
+  }
 
   private stopStatusPolling(): void {
     if (this.statusPollingInterval) {
@@ -117,7 +162,7 @@ export class StatusManager extends EventEmitter {
 
       // Cache the result if successful
       if (result.success) {
-        await this.redis.setStatus(cacheKey, result.status, 15); // Cache for 15 seconds
+        await this.redis.setStatus(cacheKey, result.status, this.statusCacheTtl); // Cache for 2 seconds
       }
 
       return result;
@@ -212,11 +257,11 @@ export class StatusManager extends EventEmitter {
           await this.updateBeerTapStatus(beerTapId, statusResponse.status);
 
           if (statusResponse.status === QueueStatus.READY) {
-            console.log(`Beer tap ${beerTapId} is ready (ready=1)!`);
+            console.log(`Beer tap ${beerTapId} is ready (status=${statusResponse.status})!`);
             return true;
           } else {
             console.log(
-              `Beer tap ${beerTapId} is busy (ready=0, status: ${statusResponse.status}), waiting 5 seconds...`
+              `Beer tap ${beerTapId} is busy (status=${statusResponse.status}), waiting 5 seconds...`
             );
           }
         } else {

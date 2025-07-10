@@ -9,13 +9,14 @@ export class QueueManagerService {
   private statusManager: StatusManager;
   private queueIntegration: QueueIntegrationService;
   private isInitialized = false;
+  private hasItemsInAnyQueue = false;
 
   private constructor() {
     // Initialize Redis service
     this.redis = RedisService.getInstance(config.redis.url);
 
-    // Initialize Status Manager
-    this.statusManager = StatusManager.getInstance(this.redis, config.queue.pollingInterval);
+    // Initialize Status Manager with status polling interval
+    this.statusManager = StatusManager.getInstance(this.redis, config.statusPolling.interval);
 
     // Initialize Queue Integration Service
     this.queueIntegration = QueueIntegrationService.getInstance(this.redis, this.statusManager);
@@ -50,6 +51,9 @@ export class QueueManagerService {
     // Initialize Queue Integration Service
     await this.queueIntegration.init(beerTapConfigs);
 
+    // Set up polling coordination
+    this.setupPollingCoordination();
+
     this.isInitialized = true;
     console.log('Queue Manager Service initialized successfully');
   }
@@ -61,6 +65,9 @@ export class QueueManagerService {
 
     console.log('Destroying Queue Manager Service...');
 
+    // Stop polling when shutting down
+    await this.statusManager.stopConditionalPolling();
+    
     await this.queueIntegration.destroy();
     await this.statusManager.destroy();
     await this.redis.disconnect();
@@ -112,6 +119,32 @@ export class QueueManagerService {
         success: false,
         message: error instanceof Error ? error.message : 'Unknown error',
       };
+    }
+  }
+
+  private setupPollingCoordination(): void {
+    // Set up callbacks for all queues managed by the integration service
+    this.queueIntegration.setHasItemsCallback((hasItems: boolean) => {
+      this.handleQueueStateChange(hasItems);
+    });
+  }
+
+  private async handleQueueStateChange(hasItems: boolean): Promise<void> {
+    // If state hasn't changed, do nothing
+    if (this.hasItemsInAnyQueue === hasItems) {
+      return;
+    }
+
+    this.hasItemsInAnyQueue = hasItems;
+
+    if (hasItems) {
+      // Start polling when we have items
+      console.log('Starting status polling - queues have items');
+      await this.statusManager.startConditionalPolling();
+    } else {
+      // Stop polling when all queues are empty
+      console.log('Stopping status polling - all queues are empty');
+      await this.statusManager.stopConditionalPolling();
     }
   }
 }

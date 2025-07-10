@@ -187,7 +187,10 @@ export class RedisService {
 
   public async getStatus(key: string): Promise<QueueStatus | null> {
     const status = await this.client.get(key);
-    return status ? (parseInt(status) as QueueStatus) : null;
+    if (!status) return null;
+    
+    const parsedStatus = parseInt(status);
+    return isNaN(parsedStatus) ? null : (parsedStatus as QueueStatus);
   }
 
   // Pub/Sub operations

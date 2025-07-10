@@ -96,34 +96,38 @@ export async function readFromThingsBoard({
       throw new Error('ThingsBoard authentication not configured');
     }
 
-    // Get device telemetry data
+    // Get device attributes data (not telemetry)
     const response = await authService.makeAuthenticatedRequest(
-      `/api/plugins/telemetry/DEVICE/${deviceId}/values/timeseries?keys=status`
+      `/api/plugins/telemetry/DEVICE/${deviceId}/values/attributes`
     );
 
     if (!response.ok) {
       throw createHttpError(
         response.status,
-        `ThingsBoard telemetry API error: ${response.status} ${response.statusText}`
+        `ThingsBoard attributes API error: ${response.status} ${response.statusText}`
       );
     }
 
-    const telemetryData = await response.json();
+    const attributesData = await response.json();
 
-    // Extract status from telemetry data
-    const statusData = telemetryData.status;
-    if (!statusData || statusData.length === 0) {
-      console.warn(`No status telemetry found for device ${deviceId.substring(0, 8)}...`);
-      return { status: QueueStatus.READY, timestamp: new Date() };
+    const cupSizeAttribute = attributesData.find((attr: any) => attr.key === 'cupSize');
+    if (!cupSizeAttribute) {
+      throw new Error(`No 'cupSize' attribute found for device ${deviceId}`);
     }
 
-    const latestStatus = statusData[0];
-    const status = latestStatus.value as QueueStatus;
-    const timestamp = new Date(latestStatus.ts);
+    const rawValue = cupSizeAttribute.value;
+    const timestamp = new Date(cupSizeAttribute.lastUpdateTs);
+
+    let status: QueueStatus;
+    if (rawValue === 0) {
+      status = QueueStatus.READY;
+    } else {
+      status = QueueStatus.BUSY;
+    }
 
     return { status, timestamp };
   } catch (error) {
-    console.error('ThingsBoard telemetry read failed:', error);
+    console.error('ThingsBoard attributes read failed:', error);
     throw error;
   }
 }

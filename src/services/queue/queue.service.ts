@@ -22,6 +22,7 @@ export class QueueService<T = any> extends EventEmitter {
   private isProcessing = false;
   private isInitialized = false;
   private processingItems = new Map<string, QueueItem<T>>();
+  private hasItemsCallback?: (hasItems: boolean) => void;
 
   constructor(queueName: string, redis: RedisService, statusManager: StatusManager, config: Partial<QueueConfig> = {}) {
     super();
@@ -121,6 +122,7 @@ export class QueueService<T = any> extends EventEmitter {
     }
 
     const availableSlots = this.config.concurrency - this.processingItems.size;
+    let hasItems = false;
 
     for (let i = 0; i < availableSlots; i++) {
       const item = await this.redis.dequeue<T>(this.queueName);
@@ -128,9 +130,19 @@ export class QueueService<T = any> extends EventEmitter {
         break; // No more items in queue
       }
 
+      hasItems = true;
       this.processItem(item).catch(error => {
         console.error(`Error processing item ${item.id}:`, error);
       });
+    }
+
+    // Check if we have items in queue or processing
+    const queueLength = await this.getQueueLength();
+    const totalItems = queueLength + this.processingItems.size;
+    
+    // Notify callback about queue state
+    if (this.hasItemsCallback) {
+      this.hasItemsCallback(totalItems > 0);
     }
   }
 
@@ -156,17 +168,9 @@ export class QueueService<T = any> extends EventEmitter {
         timestamp: new Date(),
       });
 
-      // The actual processing logic is handled by the integration service
-      // We just mark it as successful here since the integration service
-      // will handle the beer tap logic and any failures will throw errors
-      const result: QueueProcessingResult = {
-        success: true,
-        itemId: item.id,
-        processingTime: 100, // Placeholder
-        shouldRetry: false,
-      };
-
-      await this.handleItemSuccess(item, result);
+      // The integration service will handle the success/failure by emitting events
+      // For now, we just wait a bit to let the integration service process
+      await new Promise(resolve => setTimeout(resolve, 100));
     } catch (error) {
       console.error(`Unexpected error processing item ${item.id}:`, error);
 
@@ -181,6 +185,15 @@ export class QueueService<T = any> extends EventEmitter {
       await this.handleItemFailure(item, result);
     } finally {
       this.processingItems.delete(item.id);
+      
+      // Check if we still have items after processing
+      const queueLength = await this.getQueueLength();
+      const totalItems = queueLength + this.processingItems.size;
+      
+      // Notify callback about queue state
+      if (this.hasItemsCallback) {
+        this.hasItemsCallback(totalItems > 0);
+      }
     }
   }
 
@@ -363,6 +376,11 @@ export class QueueService<T = any> extends EventEmitter {
       timestamp: new Date(),
     });
 
+    // Notify callback that we have items
+    if (this.hasItemsCallback) {
+      this.hasItemsCallback(true);
+    }
+
     console.log(`Enqueued item ${item.id} to queue ${this.queueName}`);
     return item.id;
   }
@@ -405,5 +423,9 @@ export class QueueService<T = any> extends EventEmitter {
       await this.redis.dequeue(this.queueName);
     }
     console.log(`Cleared queue ${this.queueName}`);
+  }
+
+  public setHasItemsCallback(callback: (hasItems: boolean) => void): void {
+    this.hasItemsCallback = callback;
   }
 }

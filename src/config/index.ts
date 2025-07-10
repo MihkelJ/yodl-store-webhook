@@ -113,6 +113,7 @@ const envSchema = z
       .string()
       .transform(val => val === 'true')
       .default('true'),
+    STATUS_POLLING_INTERVAL: z.string().transform(Number).pipe(z.number().min(1000).max(60000)).default('2000'),
   })
   .refine(
     data => {
@@ -175,5 +176,8 @@ export const config = {
     pollingInterval: env.QUEUE_POLLING_INTERVAL,
     retryStrategy: env.QUEUE_RETRY_STRATEGY as RetryStrategy,
     deadLetterEnabled: env.QUEUE_DEAD_LETTER_ENABLED,
+  },
+  statusPolling: {
+    interval: env.STATUS_POLLING_INTERVAL,
   },
 } as const;

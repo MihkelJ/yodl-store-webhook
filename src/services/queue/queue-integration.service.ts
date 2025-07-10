@@ -24,6 +24,7 @@ export class QueueIntegrationService extends EventEmitter {
   private beerTapQueues = new Map<string, QueueService<BeerTapQueueItem>>();
   private beerTapConfigs = new Map<string, BeerTapConfig>();
   private isInitialized = false;
+  private hasItemsCallback?: (hasItems: boolean) => void;
 
   private constructor(redis: RedisService, statusManager: StatusManager) {
     super();
@@ -92,6 +93,11 @@ export class QueueIntegrationService extends EventEmitter {
 
       await queue.init();
       this.beerTapQueues.set(beerTapId, queue);
+
+      // Set up callback to monitor queue state
+      queue.setHasItemsCallback((hasItems) => {
+        this.handleQueueStateChange();
+      });
 
       console.log(`Initialized queue for beer tap: ${beerTapId}`);
     }
@@ -184,7 +190,8 @@ export class QueueIntegrationService extends EventEmitter {
         timestamp: new Date(),
       });
 
-      throw error; // Re-throw to trigger queue retry logic
+      // Don't re-throw - the error has been logged and events emitted
+      // The queue system will handle retries based on the failure event
     }
   }
 
@@ -351,5 +358,31 @@ export class QueueIntegrationService extends EventEmitter {
     this.isInitialized = false;
 
     console.log('Queue Integration Service destroyed');
+  }
+
+  public setHasItemsCallback(callback: (hasItems: boolean) => void): void {
+    this.hasItemsCallback = callback;
+  }
+
+  private async handleQueueStateChange(): Promise<void> {
+    if (!this.hasItemsCallback) {
+      return;
+    }
+
+    // Check if any queue has items (including processing items)
+    let hasItems = false;
+    for (const [beerTapId, queue] of this.beerTapQueues) {
+      const metrics = await queue.getMetrics();
+      const queueLength = await queue.getQueueLength();
+      const processingItems = metrics?.processingItems || 0;
+      
+      if (queueLength > 0 || processingItems > 0) {
+        hasItems = true;
+        break;
+      }
+    }
+
+    // Notify about the state change
+    this.hasItemsCallback(hasItems);
   }
 }
