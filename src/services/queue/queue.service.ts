@@ -7,6 +7,7 @@ import {
   QueueItem,
   QueueMetrics,
   QueueProcessingResult,
+  QueueProcessor,
   RetryStrategy,
 } from '../../types/queue.js';
 import { RedisService } from '../redis.service.js';
@@ -21,11 +22,13 @@ export class QueueService<T> extends EventEmitter {
   private isInitialized = false;
   private processingItems = new Map<string, QueueItem<T>>();
   private hasItemsCallback?: (hasItems: boolean) => void;
+  private processor?: QueueProcessor<T>;
 
-  constructor(queueName: string, redis: RedisService, config: Partial<QueueConfig> = {}) {
+  constructor(queueName: string, redis: RedisService, config: Partial<QueueConfig> = {}, processor?: QueueProcessor<T>) {
     super();
     this.queueName = queueName;
     this.redis = redis;
+    this.processor = processor;
     this.config = {
       maxAttempts: config.maxAttempts || 3,
       retryStrategy: config.retryStrategy || RetryStrategy.EXPONENTIAL,
@@ -137,6 +140,7 @@ export class QueueService<T> extends EventEmitter {
     }
 
     this.processingItems.set(item.id, item);
+    const startTime = Date.now();
 
     try {
       this.emitEvent({
@@ -148,14 +152,34 @@ export class QueueService<T> extends EventEmitter {
         timestamp: new Date(),
       });
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      let result: QueueProcessingResult;
+
+      if (this.processor) {
+        // Use the processor function if provided
+        result = await this.processor(item);
+      } else {
+        // Fallback to event-based processing (legacy behavior)
+        await new Promise(resolve => setTimeout(resolve, 100));
+        result = {
+          success: true,
+          itemId: item.id,
+          processingTime: Date.now() - startTime,
+          shouldRetry: false,
+        };
+      }
+
+      if (result.success) {
+        await this.handleItemSuccess(item, result);
+      } else {
+        await this.handleItemFailure(item, result);
+      }
     } catch (error) {
       console.error(`Unexpected error processing item ${item.id}:`, error);
 
       const result: QueueProcessingResult = {
         success: false,
         itemId: item.id,
-        processingTime: 0,
+        processingTime: Date.now() - startTime,
         error: error instanceof Error ? error.message : 'Unknown error',
         shouldRetry: true,
       };
@@ -171,6 +195,19 @@ export class QueueService<T> extends EventEmitter {
         this.hasItemsCallback(totalItems > 0);
       }
     }
+  }
+
+  private async handleItemSuccess(item: QueueItem<T>, result: QueueProcessingResult): Promise<void> {
+    await this.updateMetrics('completed', result.processingTime);
+
+    this.emitEvent({
+      type: 'item_completed',
+      queueId: this.queueName,
+      itemId: item.id,
+      beerTapId: item.beerTapId,
+      data: item.data,
+      timestamp: new Date(),
+    });
   }
 
   private async handleItemFailure(item: QueueItem<T>, result: QueueProcessingResult): Promise<void> {
@@ -315,5 +352,9 @@ export class QueueService<T> extends EventEmitter {
 
   public setHasItemsCallback(callback: (hasItems: boolean) => void): void {
     this.hasItemsCallback = callback;
+  }
+
+  public setProcessor(processor: QueueProcessor<T>): void {
+    this.processor = processor;
   }
 }

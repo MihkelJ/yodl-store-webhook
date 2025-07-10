@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { config as appConfig } from '../../config/index.js';
-import { BeerTapQueueItem, QueueConfig, QueueEvent, QueueStatus, StatusChangeEvent } from '../../types/queue.js';
+import { BeerTapQueueItem, QueueConfig, QueueEvent, QueueItem, QueueProcessingResult, QueueStatus, StatusChangeEvent } from '../../types/queue.js';
 import { Payment } from '../../types/transaction.js';
 import { RedisService } from '../redis.service.js';
 import { StatusManager } from '../status.service.js';
@@ -81,7 +81,8 @@ export class QueueIntegrationService extends EventEmitter {
 
     for (const beerTapId of this.beerTapConfigs.keys()) {
       const queueName = `beer-tap:${beerTapId}`;
-      const queue = new QueueService<BeerTapQueueItem>(queueName, this.redis, queueConfig);
+      const processor = this.createBeerTapProcessor(beerTapId);
+      const queue = new QueueService<BeerTapQueueItem>(queueName, this.redis, queueConfig, processor);
 
       await queue.init();
       this.beerTapQueues.set(beerTapId, queue);
@@ -90,6 +91,89 @@ export class QueueIntegrationService extends EventEmitter {
         this.handleQueueStateChange();
       });
     }
+  }
+
+  private createBeerTapProcessor(beerTapId: string) {
+    return async (item: QueueItem<BeerTapQueueItem>): Promise<QueueProcessingResult> => {
+      const startTime = Date.now();
+      const config = this.beerTapConfigs.get(beerTapId);
+      
+      if (!config) {
+        return {
+          success: false,
+          itemId: item.id,
+          processingTime: Date.now() - startTime,
+          error: `No configuration found for beer tap: ${beerTapId}`,
+          shouldRetry: false,
+        };
+      }
+
+      try {
+        // Wait for beer tap to be ready with a reasonable timeout
+        const isReady = await this.statusManager.waitForBeerTapReady(
+          beerTapId,
+          config.thingsBoardDeviceId,
+          config.thingsBoardServerUrl,
+          30000 // Reduced to 30 seconds
+        );
+
+        if (!isReady) {
+          return {
+            success: false,
+            itemId: item.id,
+            processingTime: Date.now() - startTime,
+            error: `Beer tap ${beerTapId} did not become ready within 30 seconds`,
+            shouldRetry: true,
+          };
+        }
+
+        // Trigger the beer tap
+        const triggerResponse = await triggerBeerTap(config.thingsBoardDeviceId, config.thingsBoardCupSize, {
+          serverUrl: appConfig.thingsBoard.serverUrl,
+          username: appConfig.thingsBoard.username!,
+          password: appConfig.thingsBoard.password!,
+        });
+
+        if (!triggerResponse.ok) {
+          throw new Error(`Failed to trigger beer tap: ${triggerResponse.status} ${triggerResponse.statusText}`);
+        }
+
+        this.emit('beerTapTriggered', {
+          beerTapId,
+          itemId: item.id,
+          timestamp: new Date(),
+        });
+
+        // Wait a moment for the beer tap to start pouring, then return success
+        // The beer tap will become busy and then ready again on its own
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        return {
+          success: true,
+          itemId: item.id,
+          processingTime: Date.now() - startTime,
+          shouldRetry: false,
+        };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`Failed to trigger beer tap ${beerTapId} for item ${item.id}:`, error);
+
+        this.emit('beerTapError', {
+          beerTapId,
+          itemId: item.id,
+          error: errorMessage,
+          timestamp: new Date(),
+        });
+
+        return {
+          success: false,
+          itemId: item.id,
+          processingTime: Date.now() - startTime,
+          error: errorMessage,
+          shouldRetry: true,
+        };
+      }
+    };
   }
 
   private setupEventHandlers(): void {
@@ -105,16 +189,7 @@ export class QueueIntegrationService extends EventEmitter {
   }
 
   private async handleQueueEvent(beerTapId: string, event: QueueEvent): Promise<void> {
-    const config = this.beerTapConfigs.get(beerTapId);
-    if (!config) {
-      console.error(`No configuration found for beer tap: ${beerTapId}`);
-      return;
-    }
-
     switch (event.type) {
-      case 'item_processing':
-        await this.handleItemProcessing(beerTapId, config, event);
-        break;
       case 'item_completed':
         await this.handleItemCompleted(beerTapId, event);
         break;
@@ -126,41 +201,6 @@ export class QueueIntegrationService extends EventEmitter {
     }
   }
 
-  private async handleItemProcessing(beerTapId: string, config: BeerTapConfig, event: QueueEvent): Promise<void> {
-    try {
-      const isReady = await this.statusManager.waitForBeerTapReady(
-        beerTapId,
-        config.thingsBoardDeviceId,
-        config.thingsBoardServerUrl,
-        60000
-      );
-
-      if (!isReady) {
-        throw new Error(`Beer tap ${beerTapId} did not become ready within timeout for item ${event.itemId}`);
-      }
-
-      await triggerBeerTap(config.thingsBoardDeviceId, config.thingsBoardCupSize, {
-        serverUrl: appConfig.thingsBoard.serverUrl,
-        username: appConfig.thingsBoard.username!,
-        password: appConfig.thingsBoard.password!,
-      });
-
-      this.emit('beerTapTriggered', {
-        beerTapId,
-        itemId: event.itemId,
-        timestamp: new Date(),
-      });
-    } catch (error) {
-      console.error(`Failed to trigger beer tap ${beerTapId} for item ${event.itemId}:`, error);
-
-      this.emit('beerTapError', {
-        beerTapId,
-        itemId: event.itemId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date(),
-      });
-    }
-  }
 
   private async handleItemCompleted(beerTapId: string, event: QueueEvent): Promise<void> {
     this.emit('beerTapCompleted', {

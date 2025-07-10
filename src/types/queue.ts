@@ -85,3 +85,4 @@ export interface QueueProcessingResult {
 
 export type QueueEventHandler = (event: QueueEvent) => void | Promise<void>;
 export type StatusChangeHandler = (event: StatusChangeEvent) => void | Promise<void>;
+export type QueueProcessor<T> = (item: QueueItem<T>) => Promise<QueueProcessingResult>;
