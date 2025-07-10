@@ -133,11 +133,16 @@ export const queueEnvSchema = z.object({
   QUEUE_MAX_DELAY: z.string().transform(Number).pipe(z.number().min(1000).max(300000)).default('30000'),
   QUEUE_CONCURRENCY: z.string().transform(Number).pipe(z.number().min(1).max(10)).default('1'),
   QUEUE_POLLING_INTERVAL: z.string().transform(Number).pipe(z.number().min(1000).max(60000)).default('5000'),
-  QUEUE_RETRY_STRATEGY: z.string().default('exponential').refine((strategy) => 
-    Object.values(RetryStrategy).includes(strategy as RetryStrategy), {
-    message: 'Invalid retry strategy',
-  }),
-  QUEUE_DEAD_LETTER_ENABLED: z.string().transform((val) => val === 'true').default('true'),
+  QUEUE_RETRY_STRATEGY: z
+    .string()
+    .default('exponential')
+    .refine(strategy => Object.values(RetryStrategy).includes(strategy as RetryStrategy), {
+      message: 'Invalid retry strategy',
+    }),
+  QUEUE_DEAD_LETTER_ENABLED: z
+    .string()
+    .transform(val => val === 'true')
+    .default('true'),
 });
 
 // API request/response schemas

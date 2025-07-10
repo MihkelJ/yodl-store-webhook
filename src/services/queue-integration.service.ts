@@ -3,13 +3,7 @@ import { QueueService } from './queue.service.js';
 import { StatusManager } from './status.service.js';
 import { RedisService } from './redis.service.js';
 import { triggerBeerTap } from './thingsboard-robust.service.js';
-import { 
-  BeerTapQueueItem, 
-  QueueEvent, 
-  QueueStatus, 
-  StatusChangeEvent,
-  QueueConfig 
-} from '../types/queue.js';
+import { BeerTapQueueItem, QueueEvent, QueueStatus, StatusChangeEvent, QueueConfig } from '../types/queue.js';
 import { config as appConfig } from '../config/index.js';
 
 interface BeerTapConfig {
@@ -50,7 +44,7 @@ export class QueueIntegrationService extends EventEmitter {
     }
 
     console.log('Initializing Queue Integration Service...');
-    
+
     // Store beer tap configurations
     for (const config of beerTapConfigs) {
       this.beerTapConfigs.set(config.id, config);
@@ -94,16 +88,11 @@ export class QueueIntegrationService extends EventEmitter {
 
     for (const [beerTapId, config] of this.beerTapConfigs) {
       const queueName = `beer-tap:${beerTapId}`;
-      const queue = new QueueService<BeerTapQueueItem>(
-        queueName,
-        this.redis,
-        this.statusManager,
-        queueConfig
-      );
+      const queue = new QueueService<BeerTapQueueItem>(queueName, this.redis, this.statusManager, queueConfig);
 
       await queue.init();
       this.beerTapQueues.set(beerTapId, queue);
-      
+
       console.log(`Initialized queue for beer tap: ${beerTapId}`);
     }
   }
@@ -147,7 +136,7 @@ export class QueueIntegrationService extends EventEmitter {
 
   private async handleItemProcessing(beerTapId: string, config: BeerTapConfig, event: QueueEvent): Promise<void> {
     console.log(`Processing item ${event.itemId} for beer tap ${beerTapId}`);
-    
+
     try {
       // First, wait for the beer tap to be ready (with on-demand status checking)
       console.log(`Waiting for beer tap ${beerTapId} to be ready before processing item ${event.itemId}...`);
@@ -173,17 +162,16 @@ export class QueueIntegrationService extends EventEmitter {
       });
 
       console.log(`Successfully triggered beer tap ${beerTapId} for transaction ${event.itemId}`);
-      
+
       // Emit success event
       this.emit('beerTapTriggered', {
         beerTapId,
         itemId: event.itemId,
         timestamp: new Date(),
       });
-
     } catch (error) {
       console.error(`Failed to trigger beer tap ${beerTapId} for item ${event.itemId}:`, error);
-      
+
       // Emit error event
       this.emit('beerTapError', {
         beerTapId,
@@ -201,7 +189,7 @@ export class QueueIntegrationService extends EventEmitter {
     // We don't need to manually control the status
 
     console.log(`Beer tap ${beerTapId} processing completed for transaction ${event.itemId}`);
-    
+
     // Emit completion event
     this.emit('beerTapCompleted', {
       beerTapId,
@@ -215,7 +203,7 @@ export class QueueIntegrationService extends EventEmitter {
     // We don't need to manually reset it on failure
 
     console.log(`Beer tap ${beerTapId} processing failed for transaction ${event.itemId}`);
-    
+
     // Emit failure event
     this.emit('beerTapFailed', {
       beerTapId,
@@ -228,10 +216,10 @@ export class QueueIntegrationService extends EventEmitter {
 
   private async handleStatusChange(event: StatusChangeEvent): Promise<void> {
     console.log(`Status changed for beer tap ${event.beerTapId}: ${event.previousStatus} -> ${event.currentStatus}`);
-    
+
     // Forward status change events
     this.emit('statusChange', event);
-    
+
     // If beer tap became ready, it might be able to process queued items
     if (event.currentStatus === QueueStatus.READY && event.previousStatus !== QueueStatus.READY) {
       console.log(`Beer tap ${event.beerTapId} is now ready, checking for queued items`);
@@ -247,7 +235,7 @@ export class QueueIntegrationService extends EventEmitter {
 
     // Add beerTapId to the task
     const taskWithBeerTapId = { ...task, beerTapId };
-    
+
     return await queue.enqueue(taskWithBeerTapId, {
       beerTapId,
       maxAttempts: 3,
@@ -286,12 +274,12 @@ export class QueueIntegrationService extends EventEmitter {
 
   public async getAllQueueLengths(): Promise<Map<string, number>> {
     const queueLengths = new Map<string, number>();
-    
+
     for (const [beerTapId, queue] of this.beerTapQueues) {
       const length = await queue.getQueueLength();
       queueLengths.set(beerTapId, length);
     }
-    
+
     return queueLengths;
   }
 
@@ -307,11 +295,12 @@ export class QueueIntegrationService extends EventEmitter {
     amount: string
   ): Promise<void> {
     // Find matching beer tap configuration
-    const matchingConfig = Array.from(this.beerTapConfigs.values()).find(config => 
-      config.transactionReceiverEns === receiverEns &&
-      config.transactionMemo === memo &&
-      config.transactionCurrency === currency &&
-      parseFloat(amount) >= parseFloat(config.transactionAmount)
+    const matchingConfig = Array.from(this.beerTapConfigs.values()).find(
+      config =>
+        config.transactionReceiverEns === receiverEns &&
+        config.transactionMemo === memo &&
+        config.transactionCurrency === currency &&
+        parseFloat(amount) >= parseFloat(config.transactionAmount)
     );
 
     if (!matchingConfig) {
@@ -332,9 +321,9 @@ export class QueueIntegrationService extends EventEmitter {
 
     // Enqueue the task
     const itemId = await this.enqueueBeerTapTask(matchingConfig.id, task);
-    
+
     console.log(`Enqueued beer tap task ${itemId} for transaction ${transactionHash} on beer tap ${matchingConfig.id}`);
-    
+
     // Emit event
     this.emit('transactionEnqueued', {
       transactionHash,
@@ -346,17 +335,17 @@ export class QueueIntegrationService extends EventEmitter {
 
   public async destroy(): Promise<void> {
     console.log('Destroying Queue Integration Service...');
-    
+
     // Destroy all queue services
     for (const [beerTapId, queue] of this.beerTapQueues) {
       await queue.destroy();
       console.log(`Destroyed queue for beer tap: ${beerTapId}`);
     }
-    
+
     this.beerTapQueues.clear();
     this.beerTapConfigs.clear();
     this.isInitialized = false;
-    
+
     console.log('Queue Integration Service destroyed');
   }
 }

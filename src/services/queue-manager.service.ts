@@ -15,10 +15,10 @@ export class QueueManagerService {
   private constructor() {
     // Initialize Redis service
     this.redis = RedisService.getInstance(config.redis.url);
-    
+
     // Initialize Status Manager
     this.statusManager = StatusManager.getInstance(this.redis, config.queue.pollingInterval);
-    
+
     // Initialize Queue Integration Service
     this.queueIntegration = QueueIntegrationService.getInstance(this.redis, this.statusManager);
   }
@@ -36,22 +36,22 @@ export class QueueManagerService {
     }
 
     console.log('Initializing Queue Manager Service...');
-    
+
     // Connect to Redis
     await this.redis.connect();
-    
+
     // Initialize Status Manager
     await this.statusManager.init();
-    
+
     // Transform beer tap configs to include IDs
     const beerTapConfigs = config.beerTaps.map((tap, index) => ({
       id: tap.id || `beer-tap-${index}`,
       ...tap,
     }));
-    
+
     // Initialize Queue Integration Service
     await this.queueIntegration.init(beerTapConfigs);
-    
+
     this.isInitialized = true;
     console.log('Queue Manager Service initialized successfully');
   }
@@ -62,12 +62,12 @@ export class QueueManagerService {
     }
 
     console.log('Destroying Queue Manager Service...');
-    
+
     await this.queueIntegration.destroy();
     await this.statusManager.destroy();
     await destroyThingsBoardServices();
     await this.redis.disconnect();
-    
+
     this.isInitialized = false;
     console.log('Queue Manager Service destroyed');
   }
@@ -103,14 +103,8 @@ export class QueueManagerService {
     amount: string
   ): Promise<{ success: boolean; message: string; itemId?: string }> {
     try {
-      await this.queueIntegration.processWebhookTransaction(
-        txHash,
-        receiverEns,
-        memo,
-        currency,
-        amount
-      );
-      
+      await this.queueIntegration.processWebhookTransaction(txHash, receiverEns, memo, currency, amount);
+
       return {
         success: true,
         message: 'Transaction successfully queued for processing',

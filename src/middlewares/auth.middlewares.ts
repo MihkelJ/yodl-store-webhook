@@ -32,10 +32,7 @@ const authMiddleware = new Middleware({
       throw createHttpError(StatusCodes.BAD_REQUEST);
     }
 
-    const message =
-      typeof request.body === 'string'
-        ? request.body
-        : JSON.stringify(request.body);
+    const message = typeof request.body === 'string' ? request.body : JSON.stringify(request.body);
 
     try {
       logger.info('Verifying signature', { signature });

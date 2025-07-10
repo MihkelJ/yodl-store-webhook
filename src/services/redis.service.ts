@@ -13,7 +13,7 @@ export class RedisService {
     this.client = createClient({
       url: redisUrl,
       socket: {
-        reconnectStrategy: (retries) => {
+        reconnectStrategy: retries => {
           if (retries > this.maxReconnectAttempts) {
             console.error('Max Redis reconnection attempts reached');
             return false;
@@ -40,7 +40,7 @@ export class RedisService {
       this.reconnectAttempts = 0;
     });
 
-    this.client.on('error', (err) => {
+    this.client.on('error', err => {
       console.error('Redis client error:', err);
       this.isConnected = false;
     });
@@ -86,19 +86,16 @@ export class RedisService {
   public async enqueue<T>(queueName: string, item: QueueItem<T>): Promise<void> {
     const serializedItem = JSON.stringify(item);
     await this.client.lPush(queueName, serializedItem);
-    
+
     // Store metadata for the item
-    await this.client.hSet(
-      `queue:${queueName}:metadata:${item.id}`,
-      {
-        id: item.id,
-        attempts: item.attempts.toString(),
-        maxAttempts: item.maxAttempts.toString(),
-        createdAt: item.createdAt.toISOString(),
-        scheduledAt: item.scheduledAt.toISOString(),
-        beerTapId: item.beerTapId || '',
-      }
-    );
+    await this.client.hSet(`queue:${queueName}:metadata:${item.id}`, {
+      id: item.id,
+      attempts: item.attempts.toString(),
+      maxAttempts: item.maxAttempts.toString(),
+      createdAt: item.createdAt.toISOString(),
+      scheduledAt: item.scheduledAt.toISOString(),
+      beerTapId: item.beerTapId || '',
+    });
   }
 
   public async dequeue<T>(queueName: string): Promise<QueueItem<T> | null> {
@@ -190,7 +187,7 @@ export class RedisService {
 
   public async getStatus(key: string): Promise<QueueStatus | null> {
     const status = await this.client.get(key);
-    return status ? parseInt(status) as QueueStatus : null;
+    return status ? (parseInt(status) as QueueStatus) : null;
   }
 
   // Pub/Sub operations
@@ -244,11 +241,11 @@ export class RedisService {
   // Atomic operations using transactions
   public async executeTransaction(commands: Array<() => Promise<any>>): Promise<any[]> {
     const transaction = this.client.multi();
-    
+
     for (const command of commands) {
       await command();
     }
-    
+
     return await transaction.exec();
   }
 

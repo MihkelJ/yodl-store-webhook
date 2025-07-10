@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Common Development Commands
 
 ### Essential Scripts
+
 - `yarn dev` - Start development server with hot reloading (uses nodemon + tsx)
 - `yarn build` - Build TypeScript to JavaScript (uses tsc + tsc-alias)
 - `yarn start` - Start production server (runs built JS from public/)
@@ -12,6 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `yarn watch` - Watch mode for TypeScript compilation
 
 ### Dependencies
+
 - **Runtime**: Express.js server with express-zod-api for API validation
 - **Blockchain**: Uses `viem` for Ethereum signature verification
 - **IoT**: Integrates with ThingsBoard platform for hardware control
@@ -23,6 +25,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a webhook microservice that processes blockchain payments and triggers IoT beer taps. The architecture follows a middleware-based approach:
 
 ### Core Flow
+
 1. **Webhook Endpoint** (`/v1/callback`) receives transaction notifications
 2. **Authentication Middleware** verifies requests are signed by YODL platform
 3. **Validation Middleware** validates transaction meets beer tap requirements
@@ -33,15 +36,18 @@ This is a webhook microservice that processes blockchain payments and triggers I
 ### Key Components
 
 #### Configuration (`src/config/index.ts`)
+
 - Environment validation using Zod schemas
 - Beer tap configuration with transaction validation rules
 - YODL platform settings and ThingsBoard device parameters
 
 #### Middleware Chain
+
 - **Auth Middleware**: Verifies `x-yodl-signature` header using viem's `verifyMessage`
 - **Validation Middleware**: Checks transaction memo, currency, receiver ENS, and amount
 
 #### Services
+
 - **Transaction Service**: Fetches transaction details from YODL indexer API
 - **ThingsBoard Service**: Sends HTTP requests to ThingsBoard cloud to control IoT devices
 - **Redis Service**: Manages queue persistence and pub/sub for real-time updates
@@ -50,7 +56,9 @@ This is a webhook microservice that processes blockchain payments and triggers I
 - **Queue Integration**: Orchestrates beer tap workflow and status management
 
 ### Beer Tap Configuration
+
 Each beer tap requires:
+
 - `transactionReceiverEns`: ENS name that should receive payment
 - `transactionMemo`: Required text in transaction memo
 - `transactionCurrency`: Expected currency (e.g., "BRL")
@@ -60,7 +68,9 @@ Each beer tap requires:
 - `thingsBoardServerUrl`: ThingsBoard server URL (default: https://thingsboard.cloud)
 
 ### Environment Variables
+
 Required variables are defined in the config with Zod validation:
+
 - `YODL_INDEXER_URL`: API endpoint for transaction data
 - `YODL_ADDRESS`: Ethereum address for signature verification
 - `BEER_TAPS`: JSON array of beer tap configurations
@@ -69,6 +79,7 @@ Required variables are defined in the config with Zod validation:
 - `QUEUE_*`: Queue configuration (max attempts, delays, concurrency, etc.)
 
 ## Project Structure
+
 - `src/server.ts` - Main server entry point using express-zod-api
 - `src/config/` - Environment validation and configuration
 - `src/routes/` - API endpoint definitions (health check and webhook)
@@ -79,11 +90,13 @@ Required variables are defined in the config with Zod validation:
 - `docker-compose.yml` - Redis container configuration
 
 ## Testing and Validation
+
 - Use `yarn typecheck` to verify TypeScript correctness
 - The project uses express-zod-api for runtime validation
 - All middleware includes comprehensive error handling with HTTP status codes
 
 ## Deployment
+
 - Built files go to `public/` directory
 - Uses ES modules (type: "module" in package.json)
 - Requires Node.js >=20
@@ -93,6 +106,7 @@ Required variables are defined in the config with Zod validation:
 ## express-zod-api Framework Guidelines
 
 ### Core Principles
+
 This project uses express-zod-api, a TypeScript-first framework for building APIs with robust input/output validation:
 
 - **Schema-First**: All endpoints use Zod schemas for input/output validation
@@ -103,6 +117,7 @@ This project uses express-zod-api, a TypeScript-first framework for building API
 ### API Structure Patterns
 
 #### Endpoint Definition
+
 ```typescript
 export const endpoint = defaultEndpointsFactory
   .addMiddleware(authMiddleware)
@@ -115,34 +130,42 @@ export const endpoint = defaultEndpointsFactory
       // Handler logic
       return result;
     },
-    description: 'Endpoint description for docs'
+    description: 'Endpoint description for docs',
   });
 ```
 
 #### Middleware Pattern
+
 ```typescript
 const middleware = new Middleware({
-  input: z.object({ /* input schema */ }),
+  input: z.object({
+    /* input schema */
+  }),
   handler: async ({ input, request, logger }) => {
     // Middleware logic
-    return { /* options for endpoints */ };
-  }
+    return {
+      /* options for endpoints */
+    };
+  },
 });
 ```
 
 ### Input/Output Validation
+
 - Use Zod schemas in `src/schemas/` directory
 - Input validation occurs before handler execution
 - Output validation ensures response consistency
 - Failed validation returns appropriate HTTP error codes
 
 ### Error Handling
+
 - Use `http-errors` package for consistent error responses
 - Middleware can throw HTTP errors that are automatically handled
 - Production mode generalizes error messages for security
 - Development mode provides detailed error information
 
 ### Best Practices
+
 1. **Schema Organization**: Keep schemas in dedicated files under `src/schemas/`
 2. **Middleware Composition**: Use middleware for authentication, validation, and cross-cutting concerns
 3. **Type Safety**: Leverage TypeScript inference from Zod schemas
@@ -151,6 +174,7 @@ const middleware = new Middleware({
 6. **Testing**: Use built-in testing utilities for endpoint and middleware testing
 
 ### Common Patterns
+
 - **Authentication**: Verify signatures/tokens in middleware, provide user context
 - **Validation**: Check business rules in middleware, provide validated data
 - **Error Handling**: Throw HTTP errors with appropriate status codes

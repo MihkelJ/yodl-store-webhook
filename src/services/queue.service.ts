@@ -1,15 +1,15 @@
 import { EventEmitter } from 'events';
 import { randomUUID } from 'crypto';
-import { 
-  QueueItem, 
-  QueueConfig, 
-  QueueStatus, 
-  RetryStrategy, 
-  QueueEvent, 
-  QueueEventHandler, 
+import {
+  QueueItem,
+  QueueConfig,
+  QueueStatus,
+  RetryStrategy,
+  QueueEvent,
+  QueueEventHandler,
   QueueProcessingResult,
   QueueMetrics,
-  BeerTapQueueItem 
+  BeerTapQueueItem,
 } from '../types/queue.js';
 import { RedisService } from './redis.service.js';
 import { StatusManager } from './status.service.js';
@@ -25,12 +25,7 @@ export class QueueService<T = any> extends EventEmitter {
   private isInitialized = false;
   private processingItems = new Map<string, QueueItem<T>>();
 
-  constructor(
-    queueName: string,
-    redis: RedisService,
-    statusManager: StatusManager,
-    config: Partial<QueueConfig> = {}
-  ) {
+  constructor(queueName: string, redis: RedisService, statusManager: StatusManager, config: Partial<QueueConfig> = {}) {
     super();
     this.queueName = queueName;
     this.redis = redis;
@@ -52,7 +47,7 @@ export class QueueService<T = any> extends EventEmitter {
     }
 
     console.log(`Initializing Queue Service: ${this.queueName}`);
-    
+
     if (!this.redis.isReady()) {
       await this.redis.connect();
     }
@@ -60,27 +55,27 @@ export class QueueService<T = any> extends EventEmitter {
     this.startProcessing();
     this.startRetryProcessor();
     this.isInitialized = true;
-    
+
     console.log(`Queue Service initialized: ${this.queueName}`);
   }
 
   public async destroy(): Promise<void> {
     console.log(`Destroying Queue Service: ${this.queueName}`);
-    
+
     this.stopProcessing();
     this.stopRetryProcessor();
     this.isInitialized = false;
-    
+
     // Wait for any ongoing processing to complete
     await this.waitForProcessingComplete();
-    
+
     console.log(`Queue Service destroyed: ${this.queueName}`);
   }
 
   private async waitForProcessingComplete(): Promise<void> {
     const maxWait = 30000; // 30 seconds
     const startTime = Date.now();
-    
+
     while (this.processingItems.size > 0 && Date.now() - startTime < maxWait) {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
@@ -128,7 +123,7 @@ export class QueueService<T = any> extends EventEmitter {
     }
 
     const availableSlots = this.config.concurrency - this.processingItems.size;
-    
+
     for (let i = 0; i < availableSlots; i++) {
       const item = await this.redis.dequeue<T>(this.queueName);
       if (!item) {
@@ -149,7 +144,7 @@ export class QueueService<T = any> extends EventEmitter {
     }
 
     this.processingItems.set(item.id, item);
-    
+
     try {
       console.log(`Starting to process item ${item.id} for beer tap ${item.beerTapId}`);
 
@@ -172,12 +167,11 @@ export class QueueService<T = any> extends EventEmitter {
         processingTime: 100, // Placeholder
         shouldRetry: false,
       };
-      
+
       await this.handleItemSuccess(item, result);
-      
     } catch (error) {
       console.error(`Unexpected error processing item ${item.id}:`, error);
-      
+
       const result: QueueProcessingResult = {
         success: false,
         itemId: item.id,
@@ -185,7 +179,7 @@ export class QueueService<T = any> extends EventEmitter {
         error: error instanceof Error ? error.message : 'Unknown error',
         shouldRetry: true,
       };
-      
+
       await this.handleItemFailure(item, result);
     } finally {
       this.processingItems.delete(item.id);
@@ -194,7 +188,7 @@ export class QueueService<T = any> extends EventEmitter {
 
   private async processItemLogic(item: QueueItem<T>): Promise<QueueProcessingResult> {
     const startTime = Date.now();
-    
+
     try {
       // This is where the actual processing logic would go
       // For now, we'll emit an event that the integration service can handle
@@ -206,10 +200,10 @@ export class QueueService<T = any> extends EventEmitter {
         data: item.data,
         timestamp: new Date(),
       });
-      
+
       // Simulate processing time
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       return {
         success: true,
         itemId: item.id,
@@ -229,10 +223,10 @@ export class QueueService<T = any> extends EventEmitter {
 
   private async handleItemSuccess(item: QueueItem<T>, result: QueueProcessingResult): Promise<void> {
     console.log(`Successfully processed item ${item.id} in ${result.processingTime}ms`);
-    
+
     // Update metrics
     await this.updateMetrics('completed', result.processingTime);
-    
+
     this.emitEvent({
       type: 'item_completed',
       queueId: this.queueName,
@@ -247,18 +241,18 @@ export class QueueService<T = any> extends EventEmitter {
     item.attempts++;
     item.lastAttemptAt = new Date();
     item.errors.push(result.error || 'Unknown error');
-    
+
     console.log(`Failed to process item ${item.id} (attempt ${item.attempts}/${item.maxAttempts}): ${result.error}`);
-    
+
     if (item.attempts >= item.maxAttempts) {
       // Max attempts reached, move to dead letter queue
       if (this.config.deadLetterQueueEnabled) {
         await this.redis.moveToDeadLetter(this.queueName, item);
         console.log(`Moved item ${item.id} to dead letter queue after ${item.attempts} attempts`);
       }
-      
+
       await this.updateMetrics('failed');
-      
+
       this.emitEvent({
         type: 'item_failed',
         queueId: this.queueName,
@@ -271,10 +265,10 @@ export class QueueService<T = any> extends EventEmitter {
       // Schedule retry
       const retryDelay = this.calculateRetryDelay(item.attempts);
       const retryAt = new Date(Date.now() + retryDelay);
-      
+
       await this.redis.scheduleRetry(this.queueName, item, retryAt);
       console.log(`Scheduled retry for item ${item.id} at ${retryAt.toISOString()}`);
-      
+
       this.emitEvent({
         type: 'item_retry',
         queueId: this.queueName,
@@ -289,15 +283,9 @@ export class QueueService<T = any> extends EventEmitter {
   private calculateRetryDelay(attempts: number): number {
     switch (this.config.retryStrategy) {
       case RetryStrategy.EXPONENTIAL:
-        return Math.min(
-          this.config.baseDelay * Math.pow(2, attempts - 1),
-          this.config.maxDelay
-        );
+        return Math.min(this.config.baseDelay * Math.pow(2, attempts - 1), this.config.maxDelay);
       case RetryStrategy.LINEAR:
-        return Math.min(
-          this.config.baseDelay * attempts,
-          this.config.maxDelay
-        );
+        return Math.min(this.config.baseDelay * attempts, this.config.maxDelay);
       case RetryStrategy.CONSTANT:
         return this.config.baseDelay;
       default:
@@ -307,12 +295,12 @@ export class QueueService<T = any> extends EventEmitter {
 
   private async processRetryItems(): Promise<void> {
     const retryItems = await this.redis.getRetryItems<T>(this.queueName);
-    
+
     for (const item of retryItems) {
       // Remove from retry queue and add back to main queue
       await this.redis.removeRetryItem(this.queueName, item);
       await this.redis.enqueue(this.queueName, item);
-      
+
       console.log(`Moved item ${item.id} from retry queue back to main queue`);
     }
   }
@@ -325,28 +313,27 @@ export class QueueService<T = any> extends EventEmitter {
 
   private async updateMetrics(type: 'completed' | 'failed', processingTime?: number): Promise<void> {
     const metricsKey = `queue:${this.queueName}:metrics`;
-    
-    const currentMetrics = await this.redis.getMetrics(metricsKey) || {
+
+    const currentMetrics = (await this.redis.getMetrics(metricsKey)) || {
       totalItems: 0,
       processingItems: 0,
       failedItems: 0,
       completedItems: 0,
       averageProcessingTime: 0,
     };
-    
+
     if (type === 'completed') {
       currentMetrics.completedItems++;
       currentMetrics.totalItems++;
       if (processingTime) {
-        currentMetrics.averageProcessingTime = 
-          (currentMetrics.averageProcessingTime + processingTime) / 2;
+        currentMetrics.averageProcessingTime = (currentMetrics.averageProcessingTime + processingTime) / 2;
       }
       currentMetrics.lastProcessedAt = new Date();
     } else if (type === 'failed') {
       currentMetrics.failedItems++;
       currentMetrics.totalItems++;
     }
-    
+
     await this.redis.setMetrics(metricsKey, currentMetrics);
   }
 
@@ -366,9 +353,9 @@ export class QueueService<T = any> extends EventEmitter {
       errors: [],
       beerTapId: options.beerTapId,
     };
-    
+
     await this.redis.enqueue(this.queueName, item);
-    
+
     this.emitEvent({
       type: 'item_added',
       queueId: this.queueName,
@@ -377,7 +364,7 @@ export class QueueService<T = any> extends EventEmitter {
       data,
       timestamp: new Date(),
     });
-    
+
     console.log(`Enqueued item ${item.id} to queue ${this.queueName}`);
     return item.id;
   }
@@ -389,11 +376,11 @@ export class QueueService<T = any> extends EventEmitter {
   public async getMetrics(): Promise<QueueMetrics | null> {
     const metricsKey = `queue:${this.queueName}:metrics`;
     const metrics = await this.redis.getMetrics(metricsKey);
-    
+
     if (metrics) {
       metrics.processingItems = this.processingItems.size;
     }
-    
+
     return metrics;
   }
 

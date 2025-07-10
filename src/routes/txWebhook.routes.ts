@@ -16,14 +16,11 @@ export const txWebhook = defaultEndpointsFactory
       try {
         // Get the queue manager instance
         const queueManager = QueueManagerService.getInstance();
-        
+
         // Ensure queue manager is initialized
         if (!queueManager.isReady()) {
           logger.error('Queue manager not ready');
-          throw createHttpError(
-            StatusCodes.SERVICE_UNAVAILABLE,
-            'Queue service not available'
-          );
+          throw createHttpError(StatusCodes.SERVICE_UNAVAILABLE, 'Queue service not available');
         }
 
         // Process the transaction through the queue system using data from middleware
@@ -36,30 +33,27 @@ export const txWebhook = defaultEndpointsFactory
         );
 
         if (!result.success) {
-          logger.error('Failed to queue transaction', { 
-            txHash, 
+          logger.error('Failed to queue transaction', {
+            txHash,
             error: result.message,
             transaction: {
               receiverEns: transaction.receiverEnsPrimaryName,
               memo: transaction.memo,
               currency: transaction.invoiceCurrency,
-              amount: transaction.invoiceAmount
-            }
+              amount: transaction.invoiceAmount,
+            },
           });
-          
-          throw createHttpError(
-            StatusCodes.INTERNAL_SERVER_ERROR,
-            result.message
-          );
+
+          throw createHttpError(StatusCodes.INTERNAL_SERVER_ERROR, result.message);
         }
 
-        logger.info('Transaction successfully queued', { 
-          txHash, 
+        logger.info('Transaction successfully queued', {
+          txHash,
           itemId: result.itemId,
           receiverEns: transaction.receiverEnsPrimaryName,
           memo: transaction.memo,
           currency: transaction.invoiceCurrency,
-          amount: transaction.invoiceAmount
+          amount: transaction.invoiceAmount,
         });
 
         return {
@@ -67,17 +61,14 @@ export const txWebhook = defaultEndpointsFactory
         };
       } catch (error) {
         logger.error('Webhook processing failed', { error, txHash });
-        
+
         // If it's already an HTTP error, re-throw it
         if (error instanceof Error && 'statusCode' in error) {
           throw error;
         }
-        
+
         // Otherwise, wrap in a generic error
-        throw createHttpError(
-          StatusCodes.INTERNAL_SERVER_ERROR,
-          ReasonPhrases.INTERNAL_SERVER_ERROR
-        );
+        throw createHttpError(StatusCodes.INTERNAL_SERVER_ERROR, ReasonPhrases.INTERNAL_SERVER_ERROR);
       }
     },
     output: statusResponseSchema,

@@ -25,12 +25,9 @@ const txValidationMiddleware = new Middleware({
   handler: async ({ input: { txHash }, logger }) => {
     const transaction = await fetchTransaction(txHash);
 
-    const { memo, invoiceCurrency, invoiceAmount, receiverEnsPrimaryName } =
-      transaction;
+    const { memo, invoiceCurrency, invoiceAmount, receiverEnsPrimaryName } = transaction;
 
-    const validMethod = config.beerTaps.find((tap) =>
-      memo.includes(tap.transactionMemo)
-    );
+    const validMethod = config.beerTaps.find(tap => memo.includes(tap.transactionMemo));
 
     if (!validMethod) {
       logger.error('Method not found', { memo, txHash });

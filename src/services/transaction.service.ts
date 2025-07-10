@@ -4,9 +4,7 @@ import { config } from '../config/index.js';
 import { Payment, TransactionResponse } from '../types/transaction.js';
 
 export async function fetchTransaction(txHash: string): Promise<Payment> {
-  const response = await fetch(
-    `${config.yodl.indexerUrl}/v1/payments/${txHash}`
-  );
+  const response = await fetch(`${config.yodl.indexerUrl}/v1/payments/${txHash}`);
 
   if (!response.ok) {
     throw createHttpError(response.status, ReasonPhrases.INTERNAL_SERVER_ERROR);

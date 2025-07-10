@@ -14,12 +14,10 @@ const beerTapSchema = z.object({
 });
 
 const envSchema = z.object({
-  NODE_ENV: z
-    .enum(['development', 'production', 'test'])
-    .default('development'),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.string().transform(Number).default('3000'),
   YODL_INDEXER_URL: z.string().url(),
-  YODL_ADDRESS: z.string().transform((address) => {
+  YODL_ADDRESS: z.string().transform(address => {
     if (!isAddress(address)) {
       throw new Error('YODL_ADDRESS is not a valid address');
     }
@@ -27,7 +25,7 @@ const envSchema = z.object({
   }),
   BEER_TAPS: z
     .string()
-    .transform((str) => {
+    .transform(str => {
       try {
         return JSON.parse(str);
       } catch (e) {
@@ -48,52 +46,28 @@ const envSchema = z.object({
   // Development configuration
   DEV_DISABLE_AUTH: z
     .string()
-    .transform((val) => val === 'true')
+    .transform(val => val === 'true')
     .default('false'),
   DEV_DISABLE_STATUS_POLLING: z
     .string()
-    .transform((val) => val === 'true')
+    .transform(val => val === 'true')
     .default('false'),
 
   // Queue configuration
-  QUEUE_MAX_ATTEMPTS: z
-    .string()
-    .transform(Number)
-    .pipe(z.number().min(1).max(10))
-    .default('3'),
-  QUEUE_BASE_DELAY: z
-    .string()
-    .transform(Number)
-    .pipe(z.number().min(100).max(60000))
-    .default('1000'),
-  QUEUE_MAX_DELAY: z
-    .string()
-    .transform(Number)
-    .pipe(z.number().min(1000).max(300000))
-    .default('30000'),
-  QUEUE_CONCURRENCY: z
-    .string()
-    .transform(Number)
-    .pipe(z.number().min(1).max(10))
-    .default('1'),
-  QUEUE_POLLING_INTERVAL: z
-    .string()
-    .transform(Number)
-    .pipe(z.number().min(1000).max(60000))
-    .default('5000'),
+  QUEUE_MAX_ATTEMPTS: z.string().transform(Number).pipe(z.number().min(1).max(10)).default('3'),
+  QUEUE_BASE_DELAY: z.string().transform(Number).pipe(z.number().min(100).max(60000)).default('1000'),
+  QUEUE_MAX_DELAY: z.string().transform(Number).pipe(z.number().min(1000).max(300000)).default('30000'),
+  QUEUE_CONCURRENCY: z.string().transform(Number).pipe(z.number().min(1).max(10)).default('1'),
+  QUEUE_POLLING_INTERVAL: z.string().transform(Number).pipe(z.number().min(1000).max(60000)).default('5000'),
   QUEUE_RETRY_STRATEGY: z
     .string()
     .default('exponential')
-    .refine(
-      (strategy) =>
-        Object.values(RetryStrategy).includes(strategy as RetryStrategy),
-      {
-        message: 'Invalid retry strategy',
-      }
-    ),
+    .refine(strategy => Object.values(RetryStrategy).includes(strategy as RetryStrategy), {
+      message: 'Invalid retry strategy',
+    }),
   QUEUE_DEAD_LETTER_ENABLED: z
     .string()
-    .transform((val) => val === 'true')
+    .transform(val => val === 'true')
     .default('true'),
 });
 
@@ -101,10 +75,7 @@ function validateEnv() {
   const parsed = envSchema.safeParse(process.env);
 
   if (!parsed.success) {
-    console.error(
-      '❌ Invalid environment variables:',
-      JSON.stringify(parsed.error.format(), null, 4)
-    );
+    console.error('❌ Invalid environment variables:', JSON.stringify(parsed.error.format(), null, 4));
     process.exit(1);
   }
 
