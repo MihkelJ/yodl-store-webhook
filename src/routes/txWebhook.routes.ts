@@ -5,49 +5,46 @@ import authMiddleware from '../middlewares/auth.middlewares.js';
 import txValidationMiddleware from '../middlewares/validation.middlewares.js';
 import { statusResponseSchema } from '../schemas/common.schemas.js';
 import { txInputSchema } from '../schemas/tx.schemas.js';
-import { communicateWithBlynk } from '../services/blynk.service.js';
+import { QueueManagerService } from '../services/queue/queue-manager.service.js';
 
 export const txWebhook = defaultEndpointsFactory
   .addMiddleware(authMiddleware)
   .addMiddleware(txValidationMiddleware)
   .build({
     method: 'post',
-    handler: async ({ options: { validMethod }, logger }) => {
+    handler: async ({ options: { transaction }, logger }) => {
       try {
-        try {
-          const response = await communicateWithBlynk({
-            token: validMethod.blynkDeviceToken,
-            value: validMethod.blynkDevicePinValue,
-            pin: validMethod.blynkDevicePin,
-            server: validMethod.blynkServer,
-          });
+        // Get the queue manager instance
+        const queueManager = QueueManagerService.getInstance();
 
-          if (!response.ok) {
-            logger.error('Failed to open beer tap', { response });
-            throw createHttpError(
-              StatusCodes.INTERNAL_SERVER_ERROR,
-              ReasonPhrases.INTERNAL_SERVER_ERROR
-            );
-          }
-
-          return {
-            status: ReasonPhrases.OK,
-          };
-        } catch (error) {
-          logger.error('Failed to open beer tap', { error });
-          throw createHttpError(
-            StatusCodes.INTERNAL_SERVER_ERROR,
-            ReasonPhrases.INTERNAL_SERVER_ERROR
-          );
+        // Ensure queue manager is initialized
+        if (!queueManager.isReady()) {
+          throw createHttpError(StatusCodes.SERVICE_UNAVAILABLE, 'Queue service not available');
         }
+
+        // Process the transaction through the queue system using data from middleware
+        const result = await queueManager.processWebhookTransaction(transaction);
+
+        if (!result.success) {
+          throw createHttpError(StatusCodes.INTERNAL_SERVER_ERROR, result.message);
+        }
+
+        return {
+          status: 'Transaction queued for processing',
+        };
       } catch (error) {
-        throw createHttpError(
-          StatusCodes.INTERNAL_SERVER_ERROR,
-          ReasonPhrases.INTERNAL_SERVER_ERROR
-        );
+        logger.error('Webhook processing failed', { error, txHash: transaction.txHash });
+
+        // If it's already an HTTP error, re-throw it
+        if (error instanceof Error && 'statusCode' in error) {
+          throw error;
+        }
+
+        // Otherwise, wrap in a generic error
+        throw createHttpError(StatusCodes.INTERNAL_SERVER_ERROR, ReasonPhrases.INTERNAL_SERVER_ERROR);
       }
     },
     output: statusResponseSchema,
     input: txInputSchema,
-    description: 'Sends a transaction to the given address',
+    description: 'Queues a transaction for beer tap processing',
   });

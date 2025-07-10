@@ -19,6 +19,12 @@ import { config } from '../config/index.js';
  */
 const authMiddleware = new Middleware({
   handler: async ({ request, logger }) => {
+    // Skip authentication in development mode if disabled
+    if (config.dev.disableAuth) {
+      logger.info('Authentication disabled for development');
+      return {};
+    }
+
     const signature = request.headers['x-yodl-signature'];
 
     if (!isHex(signature)) {
@@ -26,10 +32,7 @@ const authMiddleware = new Middleware({
       throw createHttpError(StatusCodes.BAD_REQUEST);
     }
 
-    const message =
-      typeof request.body === 'string'
-        ? request.body
-        : JSON.stringify(request.body);
+    const message = typeof request.body === 'string' ? request.body : JSON.stringify(request.body);
 
     try {
       logger.info('Verifying signature', { signature });
