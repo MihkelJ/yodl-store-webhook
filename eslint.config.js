@@ -23,6 +23,11 @@ export default [
         module: 'readonly',
         require: 'readonly',
         exports: 'readonly',
+        fetch: 'readonly',
+        Headers: 'readonly',
+        Request: 'readonly',
+        Response: 'readonly',
+        RequestInit: 'readonly',
         // Timer functions
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
@@ -39,14 +44,24 @@ export default [
       '@typescript-eslint': tseslint,
     },
     rules: {
-      '@typescript-eslint/no-unused-vars': 'error',
+      // TypeScript-specific rules
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
       '@typescript-eslint/no-unused-expressions': 'error',
-      'no-unused-vars': 'off',
-      'no-unused-expressions': 'off',
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-inferrable-types': 'off',
+
+      // Disable base rules that are handled by TypeScript rules
+      'no-unused-vars': 'off',
+      'no-unused-expressions': 'off',
       'no-console': ['error', { allow: ['error'] }],
     },
   },

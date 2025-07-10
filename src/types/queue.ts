@@ -50,12 +50,12 @@ export interface StatusChangeEvent {
   timestamp: Date;
 }
 
-export interface QueueEvent {
+export interface QueueEvent<T = unknown> {
   type: 'item_added' | 'item_processing' | 'item_completed' | 'item_failed' | 'item_retry' | 'status_changed';
   queueId: string;
   itemId?: string;
   beerTapId?: string;
-  data?: unknown;
+  data?: T;
   timestamp: Date;
 }
 

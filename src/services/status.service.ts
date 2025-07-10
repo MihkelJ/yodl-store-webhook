@@ -1,8 +1,8 @@
-import { EventEmitter } from 'events';
-import { config as appConfig } from '../config/index.js';
-import { QueueStatus, StatusChangeEvent, StatusChangeHandler, ThingsBoardStatusResponse } from '../types/queue.js';
-import { RedisService } from './redis.service.js';
-import { readBeerTapStatus } from './thingsboard/thingsboard-robust.service.js';
+import {EventEmitter} from 'events';
+import {config as appConfig} from '../config/index.js';
+import {QueueStatus, StatusChangeEvent, StatusChangeHandler, ThingsBoardStatusResponse} from '../types/queue.js';
+import {RedisService} from './redis.service.js';
+import {readBeerTapStatus} from './thingsboard/thingsboard-robust.service.js';
 
 export class StatusManager extends EventEmitter {
   private static instance: StatusManager;
@@ -180,26 +180,6 @@ export class StatusManager extends EventEmitter {
     }
   }
 
-  public async setBeerTapStatus(beerTapId: string, status: QueueStatus.READY | QueueStatus.BUSY): Promise<void> {
-    try {
-      // Update our cache directly (ThingsBoard device status is read-only in our new implementation)
-      await this.updateBeerTapStatus(beerTapId, status);
-    } catch {
-      // Mark as error status
-      await this.updateBeerTapStatus(beerTapId, QueueStatus.ERROR);
-    }
-  }
-
-  public async isBeerTapReady(beerTapId: string): Promise<boolean> {
-    const status = await this.getBeerTapStatus(beerTapId);
-    return status === QueueStatus.READY;
-  }
-
-  public async isBeerTapBusy(beerTapId: string): Promise<boolean> {
-    const status = await this.getBeerTapStatus(beerTapId);
-    return status === QueueStatus.BUSY;
-  }
-
   public async waitForBeerTapReady(
     beerTapId: string,
     deviceId: string,
@@ -238,45 +218,10 @@ export class StatusManager extends EventEmitter {
     this.on('statusChange', handler);
   }
 
-  public offStatusChange(handler: StatusChangeHandler): void {
-    this.off('statusChange', handler);
-  }
-
-  public async subscribeToStatusChanges(
-    beerTapId: string,
-    callback: (event: StatusChangeEvent) => void
-  ): Promise<void> {
-    await this.redis.subscribe(`status:${beerTapId}:change`, message => {
-      try {
-        const event = JSON.parse(message) as StatusChangeEvent;
-        event.timestamp = new Date(event.timestamp); // Convert back to Date
-        callback(event);
-      } catch (error) {
-        console.error('Error parsing status change event:', error);
-      }
-    });
-  }
-
-  public async getStatusMetrics(beerTapId: string): Promise<{
-    currentStatus: QueueStatus;
-    lastUpdated: Date;
-    isOnline: boolean;
-  }> {
-    const currentStatus = await this.getBeerTapStatus(beerTapId);
-    const isOnline = currentStatus !== QueueStatus.ERROR;
-
-    return {
-      currentStatus,
-      lastUpdated: new Date(),
-      isOnline,
-    };
-  }
-
   public async getAllBeerTapStatuses(): Promise<Map<string, QueueStatus>> {
-    const statuses = new Map<string, QueueStatus>();
     // Note: This would need to be called with specific beer tap IDs
     // since we no longer have automatic discovery of beer tap configs
-    return statuses;
+    return new Map<string, QueueStatus>();
   }
 
   public async forcePollBeerTapStatus(beerTapId: string, deviceId: string, serverUrl: string): Promise<QueueStatus> {

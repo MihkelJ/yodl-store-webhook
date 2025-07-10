@@ -1,8 +1,7 @@
 import assert from 'assert';
 import createHttpError from 'http-errors';
-import { QueueStatus } from '../../types/queue.js';
-import { ThingsBoardAuthService } from './thingsboard-auth.service.js';
-import { ThingsBoardDeviceService } from './thingsboard-device.service.js';
+import {QueueStatus} from '../../types/queue.js';
+import {ThingsBoardAuthService} from './thingsboard-auth.service.js';
 
 interface ThingsBoardConfig {
   serverUrl: string;
@@ -23,22 +22,13 @@ interface ReadFromThingsBoard {
 }
 
 let authService: ThingsBoardAuthService | null = null;
-let deviceService: ThingsBoardDeviceService | null = null;
 
 function initializeServices(config: ThingsBoardConfig) {
-  if (authService && deviceService) {
+  if (authService) {
     return;
   }
 
-  try {
-    authService = new ThingsBoardAuthService(config.serverUrl, config.username, config.password);
-    deviceService = new ThingsBoardDeviceService(authService);
-    console.log('ThingsBoard services initialized with JWT authentication');
-  } catch (error) {
-    console.warn('Failed to initialize ThingsBoard JWT services:', error);
-    authService = null;
-    deviceService = null;
-  }
+  authService = new ThingsBoardAuthService(config.serverUrl, config.username, config.password);
 }
 
 export async function communicateWithThingsBoard({
@@ -133,42 +123,20 @@ export async function readFromThingsBoard({
 }
 
 export async function triggerBeerTap(deviceId: string, cupSize: number, config: ThingsBoardConfig): Promise<Response> {
-  console.log(`Triggering beer tap with cup size: ${cupSize}ml`);
-  console.log(`ThingsBoard REST API call: POST ${config.serverUrl}/api/rpc/oneway/${deviceId}`);
-  console.log(`RPC payload: { method: 'setCupSize', params: ${cupSize} }`);
-
-  try {
-    const response = await communicateWithThingsBoard({
-      deviceId,
-      method: 'setCupSize',
-      params: cupSize,
-      config,
-    });
-
-    console.log(`ThingsBoard RPC response: ${response.status} ${response.statusText}`);
-    return response;
-  } catch (error) {
-    console.error(`ThingsBoard RPC error:`, error);
-    throw error;
-  }
+  return await communicateWithThingsBoard({
+    deviceId,
+    method: 'setCupSize',
+    params: cupSize,
+    config,
+  });
 }
 
 export async function readBeerTapStatus(
   deviceId: string,
   config: ThingsBoardConfig
 ): Promise<{ status: QueueStatus; timestamp: Date }> {
-  console.log(`Making new ThingsBoard status request for device ${deviceId.substring(0, 8)}...`);
-
-  try {
-    const result = await readFromThingsBoard({
-      deviceId,
-      config,
-    });
-
-    console.log(`ThingsBoard status response: ${result.status} at ${result.timestamp.toISOString()}`);
-    return result;
-  } catch (error) {
-    console.error(`ThingsBoard status read error:`, error);
-    throw error;
-  }
+  return await readFromThingsBoard({
+    deviceId,
+    config,
+  });
 }

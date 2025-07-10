@@ -57,7 +57,6 @@ export class RedisService {
     }
 
     await this.client.connect();
-    await this.client.ping();
   }
 
   public async disconnect(): Promise<void> {
@@ -150,7 +149,7 @@ export class RedisService {
     return parsedItems;
   }
 
-  public async removeRetryItem(queueName: string, item: QueueItem<unknown>): Promise<void> {
+  public async removeRetryItem(queueName: string, item: QueueItem): Promise<void> {
     const serializedItem = JSON.stringify(item);
     await this.client.zRem(`${queueName}:retry`, serializedItem);
   }
@@ -179,21 +178,6 @@ export class RedisService {
     await this.client.publish(channel, message);
   }
 
-  public async subscribe(channel: string, callback: (message: string) => void): Promise<void> {
-    const subscriber = this.client.duplicate();
-    await subscriber.connect();
-    await subscriber.subscribe(channel, callback);
-  }
-
-  public async incrementCounter(key: string, value = 1): Promise<void> {
-    await this.client.incrBy(key, value);
-  }
-
-  public async getCounter(key: string): Promise<number> {
-    const value = await this.client.get(key);
-    return value ? parseInt(value) : 0;
-  }
-
   public async setMetrics(key: string, metrics: QueueMetrics): Promise<void> {
     await this.client.hSet(key, {
       totalItems: metrics.totalItems.toString(),
@@ -219,19 +203,5 @@ export class RedisService {
       averageProcessingTime: parseFloat(metrics.averageProcessingTime) || 0,
       lastProcessedAt: metrics.lastProcessedAt ? new Date(metrics.lastProcessedAt) : undefined,
     };
-  }
-
-  public async executeTransaction(commands: Array<() => Promise<unknown>>): Promise<unknown[]> {
-    const transaction = this.client.multi();
-
-    for (const command of commands) {
-      await command();
-    }
-
-    return await transaction.exec();
-  }
-
-  public async ping(): Promise<string> {
-    return await this.client.ping();
   }
 }
