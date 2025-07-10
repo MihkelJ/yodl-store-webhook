@@ -11,7 +11,7 @@ export enum RetryStrategy {
   CONSTANT = 'constant',
 }
 
-export interface QueueItem<T = any> {
+export interface QueueItem<T = unknown> {
   id: string;
   data: T;
   attempts: number;
@@ -55,7 +55,7 @@ export interface QueueEvent {
   queueId: string;
   itemId?: string;
   beerTapId?: string;
-  data?: any;
+  data?: unknown;
   timestamp: Date;
 }
 

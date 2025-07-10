@@ -12,55 +12,28 @@ export const txWebhook = defaultEndpointsFactory
   .addMiddleware(txValidationMiddleware)
   .build({
     method: 'post',
-    handler: async ({ options: { validMethod, transaction }, input: { txHash }, logger }) => {
+    handler: async ({ options: { transaction }, logger }) => {
       try {
         // Get the queue manager instance
         const queueManager = QueueManagerService.getInstance();
 
         // Ensure queue manager is initialized
         if (!queueManager.isReady()) {
-          logger.error('Queue manager not ready');
           throw createHttpError(StatusCodes.SERVICE_UNAVAILABLE, 'Queue service not available');
         }
 
         // Process the transaction through the queue system using data from middleware
-        const result = await queueManager.processWebhookTransaction(
-          txHash,
-          transaction.receiverEnsPrimaryName,
-          transaction.memo,
-          transaction.invoiceCurrency,
-          transaction.invoiceAmount
-        );
+        const result = await queueManager.processWebhookTransaction(transaction);
 
         if (!result.success) {
-          logger.error('Failed to queue transaction', {
-            txHash,
-            error: result.message,
-            transaction: {
-              receiverEns: transaction.receiverEnsPrimaryName,
-              memo: transaction.memo,
-              currency: transaction.invoiceCurrency,
-              amount: transaction.invoiceAmount,
-            },
-          });
-
           throw createHttpError(StatusCodes.INTERNAL_SERVER_ERROR, result.message);
         }
-
-        logger.info('Transaction successfully queued', {
-          txHash,
-          itemId: result.itemId,
-          receiverEns: transaction.receiverEnsPrimaryName,
-          memo: transaction.memo,
-          currency: transaction.invoiceCurrency,
-          amount: transaction.invoiceAmount,
-        });
 
         return {
           status: 'Transaction queued for processing',
         };
       } catch (error) {
-        logger.error('Webhook processing failed', { error, txHash });
+        logger.error('Webhook processing failed', { error, txHash: transaction.txHash });
 
         // If it's already an HTTP error, re-throw it
         if (error instanceof Error && 'statusCode' in error) {

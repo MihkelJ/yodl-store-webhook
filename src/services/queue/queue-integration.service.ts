@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import { config as appConfig } from '../../config/index.js';
 import { BeerTapQueueItem, QueueConfig, QueueEvent, QueueStatus, StatusChangeEvent } from '../../types/queue.js';
+import { Payment } from '../../types/transaction.js';
 import { RedisService } from '../redis.service.js';
 import { StatusManager } from '../status.service.js';
 import { triggerBeerTap } from '../thingsboard/thingsboard-robust.service.js';
@@ -95,7 +96,7 @@ export class QueueIntegrationService extends EventEmitter {
       this.beerTapQueues.set(beerTapId, queue);
 
       // Set up callback to monitor queue state
-      queue.setHasItemsCallback((hasItems) => {
+      queue.setHasItemsCallback(hasItems => {
         this.handleQueueStateChange();
       });
 
@@ -161,15 +162,11 @@ export class QueueIntegrationService extends EventEmitter {
 
       // Trigger the beer tap (send RPC command with cup size)
       // The device will automatically set itself to BUSY when it starts dispensing
-      await triggerBeerTap(
-        config.thingsBoardDeviceId,
-        config.thingsBoardCupSize,
-        {
-          serverUrl: appConfig.thingsBoard.serverUrl,
-          username: appConfig.thingsBoard.username!,
-          password: appConfig.thingsBoard.password!,
-        }
-      );
+      await triggerBeerTap(config.thingsBoardDeviceId, config.thingsBoardCupSize, {
+        serverUrl: appConfig.thingsBoard.serverUrl,
+        username: appConfig.thingsBoard.username!,
+        password: appConfig.thingsBoard.password!,
+      });
 
       console.log(`Successfully triggered beer tap ${beerTapId} for transaction ${event.itemId}`);
 
@@ -298,46 +295,32 @@ export class QueueIntegrationService extends EventEmitter {
     return new Map(this.beerTapConfigs);
   }
 
-  public async processWebhookTransaction(
-    transactionHash: string,
-    receiverEns: string,
-    memo: string,
-    currency: string,
-    amount: string
-  ): Promise<void> {
-    // Find matching beer tap configuration
-    const matchingConfig = Array.from(this.beerTapConfigs.values()).find(
-      config =>
-        config.transactionReceiverEns === receiverEns &&
-        config.transactionMemo === memo &&
-        config.transactionCurrency === currency &&
-        parseFloat(amount) >= parseFloat(config.transactionAmount)
-    );
+  public async processWebhookTransaction(transaction: Payment): Promise<void> {
+    const matchingConfig = Array.from(this.beerTapConfigs.values()).find(config => {
+      return (
+        config.transactionReceiverEns === transaction.receiverEnsPrimaryName &&
+        config.transactionMemo === transaction.memo &&
+        config.transactionCurrency === transaction.invoiceCurrency &&
+        Number(transaction.invoiceAmount) >= Number(config.transactionAmount)
+      );
+    });
 
-    if (!matchingConfig) {
-      console.log(`No matching beer tap configuration found for transaction ${transactionHash}`);
-      return;
-    }
+    if (!matchingConfig) return;
 
-    // Create beer tap task
     const task: BeerTapQueueItem = {
-      transactionHash,
+      transactionHash: transaction.txHash,
       beerTapId: matchingConfig.id,
-      receiverEns,
-      memo,
-      currency,
-      amount,
+      receiverEns: transaction.receiverEnsPrimaryName,
+      memo: transaction.memo,
+      currency: transaction.invoiceCurrency,
+      amount: transaction.invoiceAmount,
       timestamp: new Date(),
     };
 
-    // Enqueue the task
     const itemId = await this.enqueueBeerTapTask(matchingConfig.id, task);
 
-    console.log(`Enqueued beer tap task ${itemId} for transaction ${transactionHash} on beer tap ${matchingConfig.id}`);
-
-    // Emit event
     this.emit('transactionEnqueued', {
-      transactionHash,
+      transactionHash: transaction.txHash,
       beerTapId: matchingConfig.id,
       itemId,
       timestamp: new Date(),
@@ -375,7 +358,7 @@ export class QueueIntegrationService extends EventEmitter {
       const metrics = await queue.getMetrics();
       const queueLength = await queue.getQueueLength();
       const processingItems = metrics?.processingItems || 0;
-      
+
       if (queueLength > 0 || processingItems > 0) {
         hasItems = true;
         break;

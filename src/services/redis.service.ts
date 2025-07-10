@@ -1,5 +1,5 @@
 import { createClient, RedisClientType } from 'redis';
-import { QueueItem, QueueStatus, QueueMetrics } from '../types/queue.js';
+import { QueueItem, QueueMetrics, QueueStatus } from '../types/queue.js';
 
 export class RedisService {
   private static instance: RedisService;
@@ -15,7 +15,6 @@ export class RedisService {
       socket: {
         reconnectStrategy: retries => {
           if (retries > this.maxReconnectAttempts) {
-            console.error('Max Redis reconnection attempts reached');
             return false;
           }
           return Math.min(this.reconnectDelay * Math.pow(2, retries), 30000);
@@ -35,24 +34,20 @@ export class RedisService {
 
   private setupEventHandlers(): void {
     this.client.on('connect', () => {
-      console.log('Redis client connected');
       this.isConnected = true;
       this.reconnectAttempts = 0;
     });
 
-    this.client.on('error', err => {
-      console.error('Redis client error:', err);
+    this.client.on('error', () => {
       this.isConnected = false;
     });
 
     this.client.on('end', () => {
-      console.log('Redis client disconnected');
       this.isConnected = false;
     });
 
     this.client.on('reconnecting', () => {
       this.reconnectAttempts++;
-      console.log(`Redis client reconnecting (attempt ${this.reconnectAttempts})`);
     });
   }
 
@@ -61,14 +56,8 @@ export class RedisService {
       return;
     }
 
-    try {
-      await this.client.connect();
-      await this.client.ping();
-      console.log('Redis connection established');
-    } catch (error) {
-      console.error('Failed to connect to Redis:', error);
-      throw error;
-    }
+    await this.client.connect();
+    await this.client.ping();
   }
 
   public async disconnect(): Promise<void> {
@@ -82,12 +71,10 @@ export class RedisService {
     return this.isConnected && this.client.isReady;
   }
 
-  // Queue operations
   public async enqueue<T>(queueName: string, item: QueueItem<T>): Promise<void> {
     const serializedItem = JSON.stringify(item);
     await this.client.lPush(queueName, serializedItem);
 
-    // Store metadata for the item
     await this.client.hSet(`queue:${queueName}:metadata:${item.id}`, {
       id: item.id,
       attempts: item.attempts.toString(),
@@ -106,15 +93,13 @@ export class RedisService {
 
     try {
       const item = JSON.parse(serializedItem) as QueueItem<T>;
-      // Convert date strings back to Date objects
       item.createdAt = new Date(item.createdAt);
       item.scheduledAt = new Date(item.scheduledAt);
       if (item.lastAttemptAt) {
         item.lastAttemptAt = new Date(item.lastAttemptAt);
       }
       return item;
-    } catch (error) {
-      console.error('Failed to parse queue item:', error);
+    } catch {
       return null;
     }
   }
@@ -136,7 +121,6 @@ export class RedisService {
     });
   }
 
-  // Retry queue operations (using sorted sets for delayed processing)
   public async scheduleRetry<T>(queueName: string, item: QueueItem<T>, retryAt: Date): Promise<void> {
     const serializedItem = JSON.stringify(item);
     await this.client.zAdd(`${queueName}:retry`, {
@@ -158,26 +142,24 @@ export class RedisService {
           parsed.lastAttemptAt = new Date(parsed.lastAttemptAt);
         }
         parsedItems.push(parsed);
-      } catch (error) {
-        console.error('Failed to parse retry item:', error);
+      } catch {
+        // Ignore
       }
     }
 
     return parsedItems;
   }
 
-  public async removeRetryItem(queueName: string, item: QueueItem<any>): Promise<void> {
+  public async removeRetryItem(queueName: string, item: QueueItem<unknown>): Promise<void> {
     const serializedItem = JSON.stringify(item);
     await this.client.zRem(`${queueName}:retry`, serializedItem);
   }
 
-  // Dead letter queue operations
   public async moveToDeadLetter<T>(queueName: string, item: QueueItem<T>): Promise<void> {
     const serializedItem = JSON.stringify(item);
     await this.client.lPush(`${queueName}:dead`, serializedItem);
   }
 
-  // Status operations
   public async setStatus(key: string, status: QueueStatus, ttl?: number): Promise<void> {
     await this.client.set(key, status.toString());
     if (ttl) {
@@ -188,12 +170,11 @@ export class RedisService {
   public async getStatus(key: string): Promise<QueueStatus | null> {
     const status = await this.client.get(key);
     if (!status) return null;
-    
+
     const parsedStatus = parseInt(status);
     return isNaN(parsedStatus) ? null : (parsedStatus as QueueStatus);
   }
 
-  // Pub/Sub operations
   public async publish(channel: string, message: string): Promise<void> {
     await this.client.publish(channel, message);
   }
@@ -204,7 +185,6 @@ export class RedisService {
     await subscriber.subscribe(channel, callback);
   }
 
-  // Metrics operations
   public async incrementCounter(key: string, value = 1): Promise<void> {
     await this.client.incrBy(key, value);
   }
@@ -241,8 +221,7 @@ export class RedisService {
     };
   }
 
-  // Atomic operations using transactions
-  public async executeTransaction(commands: Array<() => Promise<any>>): Promise<any[]> {
+  public async executeTransaction(commands: Array<() => Promise<unknown>>): Promise<unknown[]> {
     const transaction = this.client.multi();
 
     for (const command of commands) {
@@ -252,7 +231,6 @@ export class RedisService {
     return await transaction.exec();
   }
 
-  // Health check
   public async ping(): Promise<string> {
     return await this.client.ping();
   }

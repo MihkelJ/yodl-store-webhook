@@ -1,4 +1,5 @@
 import { config } from '../../config/index.js';
+import { Payment } from '../../types/transaction.js';
 import { RedisService } from '../redis.service.js';
 import { StatusManager } from '../status.service.js';
 import { QueueIntegrationService } from './queue-integration.service.js';
@@ -67,7 +68,7 @@ export class QueueManagerService {
 
     // Stop polling when shutting down
     await this.statusManager.stopConditionalPolling();
-    
+
     await this.queueIntegration.destroy();
     await this.statusManager.destroy();
     await this.redis.disconnect();
@@ -99,15 +100,9 @@ export class QueueManagerService {
   }
 
   // Helper method to process webhook transactions
-  public async processWebhookTransaction(
-    txHash: string,
-    receiverEns: string,
-    memo: string,
-    currency: string,
-    amount: string
-  ): Promise<{ success: boolean; message: string; itemId?: string }> {
+  public async processWebhookTransaction(transaction: Payment): Promise<{ success: boolean; message: string }> {
     try {
-      await this.queueIntegration.processWebhookTransaction(txHash, receiverEns, memo, currency, amount);
+      await this.queueIntegration.processWebhookTransaction(transaction);
 
       return {
         success: true,

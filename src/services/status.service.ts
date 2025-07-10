@@ -29,35 +29,23 @@ export class StatusManager extends EventEmitter {
   }
 
   public async init(): Promise<void> {
-    console.log('Initializing Status Manager...');
-
     if (!this.redis.isReady()) {
       await this.redis.connect();
     }
-
-    // No automatic polling - we'll fetch on-demand
-    console.log('Status Manager initialized (on-demand polling mode)');
   }
 
   public async destroy(): Promise<void> {
-    console.log('Destroying Status Manager...');
     this.stopStatusPolling();
-
-    // Clear any pending requests
     this.pendingStatusRequests.clear();
-
     await this.redis.disconnect();
   }
 
-  // Conditional status polling - only when queues have items
   public async startConditionalPolling(): Promise<void> {
     if (this.isPolling) {
       return;
     }
-
-    console.log('Starting conditional status polling every', this.pollingIntervalMs, 'ms');
     this.isPolling = true;
-    
+
     this.statusPollingInterval = setInterval(async () => {
       await this.pollAllBeerTapStatuses();
     }, this.pollingIntervalMs);
@@ -68,20 +56,16 @@ export class StatusManager extends EventEmitter {
       return;
     }
 
-    console.log('Stopping conditional status polling');
     this.stopStatusPolling();
   }
 
   private async pollAllBeerTapStatuses(): Promise<void> {
     try {
-      // Poll all configured beer taps
       for (const beerTap of appConfig.beerTaps) {
         const beerTapId = beerTap.id || `${beerTap.transactionReceiverEns}-${beerTap.transactionCurrency}`;
-        
-        // Only poll if we don't have a fresh cached status
+
         const cachedStatus = await this.redis.getStatus(`status:${beerTapId}`);
         if (cachedStatus === null) {
-          // Fire and forget - let the deduplication handle concurrent requests
           this.getThingsBoardStatusWithDedup(
             beerTapId,
             beerTap.thingsBoardDeviceId,
@@ -102,7 +86,6 @@ export class StatusManager extends EventEmitter {
       this.statusPollingInterval = null;
     }
     this.isPolling = false;
-    console.log('Status polling stopped');
   }
 
   // Request deduplication and caching method
@@ -114,10 +97,8 @@ export class StatusManager extends EventEmitter {
     const requestKey = `${deviceId}:${serverUrl}`;
     const cacheKey = `status:${beerTapId}`;
 
-    // First check if we have a cached status (valid for some time)
     const cachedStatus = await this.redis.getStatus(cacheKey);
     if (cachedStatus !== null) {
-      console.log(`Using cached status for beer tap ${beerTapId}: ${cachedStatus}`);
       return {
         status: cachedStatus,
         timestamp: new Date(),
@@ -125,42 +106,34 @@ export class StatusManager extends EventEmitter {
       };
     }
 
-    // If there's already a pending request for this token/server, return the same promise
     if (this.pendingStatusRequests.has(requestKey)) {
-      console.log(`Reusing pending ThingsBoard status request for device ${deviceId.substring(0, 8)}...`);
       return this.pendingStatusRequests.get(requestKey)!;
     }
 
-    // Create new request
-    console.log(`Making new ThingsBoard status request for device ${deviceId.substring(0, 8)}...`);
-    const requestPromise = readBeerTapStatus(
-      deviceId,
-      {
-        serverUrl: appConfig.thingsBoard.serverUrl,
-        username: appConfig.thingsBoard.username!,
-        password: appConfig.thingsBoard.password!,
-      }
-    );
+    const requestPromise = readBeerTapStatus(deviceId, {
+      serverUrl: appConfig.thingsBoard.serverUrl,
+      username: appConfig.thingsBoard.username!,
+      password: appConfig.thingsBoard.password!,
+    });
 
-    // Create a promise that transforms the result
-    const transformedPromise = requestPromise.then(result => ({
-      status: result.status,
-      timestamp: result.timestamp,
-      success: true,
-    })).catch(error => ({
-      status: QueueStatus.ERROR,
-      timestamp: new Date(),
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }));
+    const transformedPromise = requestPromise
+      .then(result => ({
+        status: result.status,
+        timestamp: result.timestamp,
+        success: true,
+      }))
+      .catch(error => ({
+        status: QueueStatus.ERROR,
+        timestamp: new Date(),
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }));
 
-    // Store the promise
     this.pendingStatusRequests.set(requestKey, transformedPromise);
 
     try {
       const result = await transformedPromise;
 
-      // Cache the result if successful
       if (result.success) {
         await this.redis.setStatus(cacheKey, result.status, this.statusCacheTtl); // Cache for 2 seconds
       }
@@ -204,28 +177,16 @@ export class StatusManager extends EventEmitter {
 
       // Publish to Redis pub/sub for other services
       await this.redis.publish(`status:${beerTapId}:change`, JSON.stringify(statusChangeEvent));
-
-      console.log(`Status changed for beer tap ${beerTapId}: ${previousStatus} -> ${newStatus}`);
     }
   }
 
-  public async setBeerTapStatus(
-    beerTapId: string,
-    status: QueueStatus.READY | QueueStatus.BUSY,
-    deviceToken: string,
-    serverUrl: string
-  ): Promise<void> {
+  public async setBeerTapStatus(beerTapId: string, status: QueueStatus.READY | QueueStatus.BUSY): Promise<void> {
     try {
       // Update our cache directly (ThingsBoard device status is read-only in our new implementation)
       await this.updateBeerTapStatus(beerTapId, status);
-
-      console.log(`Successfully set beer tap ${beerTapId} status to ${status}`);
-    } catch (error) {
-      console.error(`Failed to set beer tap ${beerTapId} status:`, error);
-
+    } catch {
       // Mark as error status
       await this.updateBeerTapStatus(beerTapId, QueueStatus.ERROR);
-      throw error;
     }
   }
 
@@ -246,7 +207,6 @@ export class StatusManager extends EventEmitter {
     timeoutMs = 30000
   ): Promise<boolean> {
     const startTime = Date.now();
-    console.log(`Checking if beer tap ${beerTapId} is ready for processing...`);
 
     while (Date.now() - startTime < timeoutMs) {
       try {
@@ -257,19 +217,13 @@ export class StatusManager extends EventEmitter {
           await this.updateBeerTapStatus(beerTapId, statusResponse.status);
 
           if (statusResponse.status === QueueStatus.READY) {
-            console.log(`Beer tap ${beerTapId} is ready (status=${statusResponse.status})!`);
             return true;
-          } else {
-            console.log(
-              `Beer tap ${beerTapId} is busy (status=${statusResponse.status}), waiting 5 seconds...`
-            );
           }
         } else {
           console.error(`Failed to check beer tap ${beerTapId} status:`, statusResponse.error);
           // Continue trying even if one check fails
         }
-      } catch (error) {
-        console.error(`Error checking beer tap ${beerTapId} status:`, error);
+      } catch {
         // Continue trying even if one check fails
       }
 
@@ -277,7 +231,6 @@ export class StatusManager extends EventEmitter {
       await new Promise(resolve => setTimeout(resolve, 5000));
     }
 
-    console.log(`Timeout waiting for beer tap ${beerTapId} to become ready`);
     return false;
   }
 

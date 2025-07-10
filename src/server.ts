@@ -43,11 +43,11 @@ async function startServer() {
     });
 
     return server;
-  } catch (error) {
+  } catch {
     process.exit(1);
   }
 }
 
-startServer().catch(err => {
+startServer().catch(() => {
   process.exit(1);
 });

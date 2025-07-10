@@ -46,7 +46,7 @@ const envSchema = z
       .transform(str => {
         try {
           return JSON.parse(str);
-        } catch (e) {
+        } catch {
           throw new Error('BEER_TAPS must be a valid JSON array');
         }
       })
