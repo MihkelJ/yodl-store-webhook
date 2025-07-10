@@ -33,14 +33,18 @@ const beerTapSchema = z.object({
 const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-    PORT: z.string().transform(Number).default('3000'),
-    YODL_INDEXER_URL: z.string().url(),
-    YODL_ADDRESS: z.string().transform(address => {
-      if (!isAddress(address)) {
-        throw new Error('YODL_ADDRESS is not a valid address');
-      }
-      return address;
-    }),
+    PORT: z.string().transform(Number).optional().default('3000'),
+    YODL_INDEXER_URL: z.string().url().optional().default('https://tx.yodl.me/api'),
+    YODL_ADDRESS: z
+      .string()
+      .optional()
+      .default('0x66a31Aa400dd8C11f9af054c3b7bCcB783B4901B')
+      .transform(address => {
+        if (!isAddress(address)) {
+          throw new Error('YODL_ADDRESS is not a valid address');
+        }
+        return address;
+      }),
     BEER_TAPS: z
       .string()
       .transform(str => {
