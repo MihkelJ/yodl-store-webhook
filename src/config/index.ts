@@ -28,6 +28,9 @@ const beerTapSchema = z.object({
     )
     .optional()
     .default('https://thingsboard.cloud'),
+  title: z.string(),
+  location: z.string(),
+  description: z.string().optional(),
 });
 
 const envSchema = z
@@ -121,12 +124,7 @@ const envSchema = z
   })
   .refine(
     data => {
-      // Always require both username and password
-      if (!data.THINGSBOARD_USERNAME || !data.THINGSBOARD_PASSWORD) {
-        return false;
-      }
-
-      return true;
+      return !(!data.THINGSBOARD_USERNAME || !data.THINGSBOARD_PASSWORD);
     },
     {
       message: 'ThingsBoard authentication requires both username and password to be provided',
@@ -185,3 +183,9 @@ export const config = {
     interval: env.STATUS_POLLING_INTERVAL,
   },
 } as const;
+
+export function getBeerTapsByLocation(location: string) {
+  return config.beerTaps.filter(tap => 
+    tap.location.toLowerCase().includes(location.toLowerCase())
+  );
+}
