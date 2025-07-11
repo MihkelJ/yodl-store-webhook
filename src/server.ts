@@ -10,7 +10,7 @@ const config = createConfig({
   http: {
     listen: appConfig.server.port,
   },
-  cors: false,
+  cors: true,
   logger: {
     level: 'info',
     color: true,
