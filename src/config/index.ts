@@ -185,7 +185,5 @@ export const config = {
 } as const;
 
 export function getBeerTapsByLocation(location: string) {
-  return config.beerTaps.filter(tap => 
-    tap.location.toLowerCase().includes(location.toLowerCase())
-  );
+  return config.beerTaps.filter(tap => tap.location.toLowerCase().includes(location.toLowerCase()));
 }

@@ -1,8 +1,8 @@
-import {EventEmitter} from 'events';
-import {config as appConfig} from '../config/index.js';
-import {QueueStatus, StatusChangeEvent, StatusChangeHandler, ThingsBoardStatusResponse} from '../types/queue.js';
-import {RedisService} from './redis.service.js';
-import {readBeerTapStatus} from './thingsboard/thingsboard-robust.service.js';
+import { EventEmitter } from 'events';
+import { config as appConfig } from '../config/index.js';
+import { QueueStatus, StatusChangeEvent, StatusChangeHandler, ThingsBoardStatusResponse } from '../types/queue.js';
+import { RedisService } from './redis.service.js';
+import { readBeerTapStatus } from './thingsboard/thingsboard-robust.service.js';
 
 export class StatusManager extends EventEmitter {
   private static instance: StatusManager;

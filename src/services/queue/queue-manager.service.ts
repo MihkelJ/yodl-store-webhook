@@ -61,9 +61,6 @@ export class QueueManagerService {
     this.isInitialized = false;
   }
 
-
-
-
   public isReady(): boolean {
     return this.isInitialized && this.redis.isReady();
   }
@@ -83,6 +80,14 @@ export class QueueManagerService {
         message: error instanceof Error ? error.message : 'Unknown error',
       };
     }
+  }
+
+  public async findTransactionStatus(txHash: string): Promise<{
+    status: 'not_found' | 'queued' | 'processing' | 'completed' | 'failed';
+    queuePosition?: number;
+    beerTapId?: string;
+  }> {
+    return await this.queueIntegration.findTransactionStatus(txHash);
   }
 
   private setupPollingCoordination(): void {

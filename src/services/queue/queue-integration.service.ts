@@ -1,6 +1,14 @@
 import { EventEmitter } from 'events';
 import { config as appConfig } from '../../config/index.js';
-import { BeerTapQueueItem, QueueConfig, QueueEvent, QueueItem, QueueProcessingResult, QueueStatus, StatusChangeEvent } from '../../types/queue.js';
+import {
+  BeerTapQueueItem,
+  QueueConfig,
+  QueueEvent,
+  QueueItem,
+  QueueProcessingResult,
+  QueueStatus,
+  StatusChangeEvent,
+} from '../../types/queue.js';
 import { Payment } from '../../types/transaction.js';
 import { RedisService } from '../redis.service.js';
 import { StatusManager } from '../status.service.js';
@@ -97,7 +105,7 @@ export class QueueIntegrationService extends EventEmitter {
     return async (item: QueueItem<BeerTapQueueItem>): Promise<QueueProcessingResult> => {
       const startTime = Date.now();
       const config = this.beerTapConfigs.get(beerTapId);
-      
+
       if (!config) {
         return {
           success: false,
@@ -201,7 +209,6 @@ export class QueueIntegrationService extends EventEmitter {
     }
   }
 
-
   private async handleItemCompleted(beerTapId: string, event: QueueEvent): Promise<void> {
     this.emit('beerTapCompleted', {
       beerTapId,
@@ -284,6 +291,70 @@ export class QueueIntegrationService extends EventEmitter {
 
   public getBeerTapConfigs(): Map<string, BeerTapConfig> {
     return new Map(this.beerTapConfigs);
+  }
+
+  public async findTransactionStatus(txHash: string): Promise<{
+    status: 'not_found' | 'queued' | 'processing' | 'completed' | 'failed';
+    queuePosition?: number;
+    beerTapId?: string;
+  }> {
+    // First check if transaction was completed recently
+    const completedStatus = await this.redis.getStatus(`completed:${txHash}`);
+    if (completedStatus !== null) {
+      return {
+        status: 'completed',
+      };
+    }
+
+    // Search through all beer tap queues for the transaction
+    for (const [beerTapId] of this.beerTapQueues) {
+      const queueName = `beer-tap:${beerTapId}`;
+
+      // Check the main queue
+      const queueLength = await this.redis.getQueueLength(queueName);
+      if (queueLength > 0) {
+        const items = await this.redis.peekQueue<BeerTapQueueItem>(queueName, queueLength);
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].data.transactionHash === txHash) {
+            return {
+              status: 'queued',
+              queuePosition: i + 1,
+              beerTapId,
+            };
+          }
+        }
+      }
+
+      // Check retry queue
+      const retryItems = await this.redis.getRetryItems<BeerTapQueueItem>(queueName);
+      for (const item of retryItems) {
+        if (item.data.transactionHash === txHash) {
+          return {
+            status: 'queued',
+            beerTapId,
+          };
+        }
+      }
+
+      // Check dead letter queue (failed transactions)
+      try {
+        const deadItems = await this.redis.peekQueue<BeerTapQueueItem>(`${queueName}:dead`, 100);
+        for (const item of deadItems) {
+          if (item.data.transactionHash === txHash) {
+            return {
+              status: 'failed',
+              beerTapId,
+            };
+          }
+        }
+      } catch {
+        // Dead letter queue might not exist, that's okay
+      }
+    }
+
+    return {
+      status: 'not_found',
+    };
   }
 
   public async processWebhookTransaction(transaction: Payment): Promise<void> {

@@ -24,7 +24,12 @@ export class QueueService<T> extends EventEmitter {
   private hasItemsCallback?: (hasItems: boolean) => void;
   private processor?: QueueProcessor<T>;
 
-  constructor(queueName: string, redis: RedisService, config: Partial<QueueConfig> = {}, processor?: QueueProcessor<T>) {
+  constructor(
+    queueName: string,
+    redis: RedisService,
+    config: Partial<QueueConfig> = {},
+    processor?: QueueProcessor<T>
+  ) {
     super();
     this.queueName = queueName;
     this.redis = redis;
@@ -200,6 +205,14 @@ export class QueueService<T> extends EventEmitter {
   private async handleItemSuccess(item: QueueItem<T>, result: QueueProcessingResult): Promise<void> {
     await this.updateMetrics('completed', result.processingTime);
 
+    // Store completed transaction hash for status checking (24 hour TTL)
+    if (item.data && typeof item.data === 'object' && 'transactionHash' in item.data) {
+      const txHash = (item.data as any).transactionHash;
+      if (txHash) {
+        await this.redis.setStatus(`completed:${txHash}`, 1, 86400); // 24 hour TTL
+      }
+    }
+
     this.emitEvent({
       type: 'item_completed',
       queueId: this.queueName,
@@ -344,11 +357,9 @@ export class QueueService<T> extends EventEmitter {
     return metrics;
   }
 
-
   public onQueueEvent(handler: QueueEventHandler): void {
     this.on('queueEvent', handler);
   }
-
 
   public setHasItemsCallback(callback: (hasItems: boolean) => void): void {
     this.hasItemsCallback = callback;

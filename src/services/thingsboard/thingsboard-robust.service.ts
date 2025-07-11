@@ -1,7 +1,7 @@
 import assert from 'assert';
 import createHttpError from 'http-errors';
-import {QueueStatus} from '../../types/queue.js';
-import {ThingsBoardAuthService} from './thingsboard-auth.service.js';
+import { QueueStatus } from '../../types/queue.js';
+import { ThingsBoardAuthService } from './thingsboard-auth.service.js';
 
 interface ThingsBoardConfig {
   serverUrl: string;

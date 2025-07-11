@@ -10,9 +10,7 @@ export const beerTapsEndpoint = defaultEndpointsFactory.build({
     let filteredTaps = config.beerTaps;
 
     if (input.location) {
-      filteredTaps = config.beerTaps.filter(tap => 
-        tap.location.toLowerCase().includes(input.location!.toLowerCase())
-      );
+      filteredTaps = config.beerTaps.filter(tap => tap.location.toLowerCase().includes(input.location!.toLowerCase()));
     }
 
     const publicTaps = filteredTaps.map(tap => ({

@@ -4,6 +4,7 @@ import { config as appConfig } from './config/index.js';
 import { healthEndpoint } from './routes/health.routes.js';
 import { txWebhook } from './routes/txWebhook.routes.js';
 import { beerTapsEndpoint } from './routes/beerTaps.routes.js';
+import { statusEndpoint } from './routes/status.js';
 import { QueueManagerService } from './services/queue/queue-manager.service.js';
 
 const config = createConfig({
@@ -23,6 +24,9 @@ const routing: Routing = {
     health: healthEndpoint,
     callback: txWebhook,
     'beer-taps': beerTapsEndpoint,
+    status: {
+      ':txHash': statusEndpoint,
+    },
   },
 };
 
