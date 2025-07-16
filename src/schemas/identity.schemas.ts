@@ -5,25 +5,7 @@ import { z } from 'zod';
 /**
  * Schema for Self.xyz proof verification input
  */
-export const verificationInputSchema = z
-  .object({
-    attestationId: z
-      .union([z.literal(1), z.literal(2)], {
-        errorMap: () => ({ message: 'Attestation ID must be 1 or 2' }),
-      })
-      .or(z.any()),
-    proof: z
-      .object({
-        a: z.tuple([z.string(), z.string()]),
-        b: z.tuple([z.tuple([z.string(), z.string()]), z.tuple([z.string(), z.string()])]),
-        c: z.tuple([z.string(), z.string()]),
-      })
-      .describe('VcAndDiscloseProof from Self.xyz')
-      .or(z.any()),
-    pubSignals: z.array(z.string()).describe('Array of BigNumberish public signals from Self.xyz proof').or(z.any()),
-    userContextData: z.string().min(1, 'User context data is required').or(z.any()),
-  })
-  .passthrough();
+export const verificationInputSchema = z.object({}).passthrough();
 
 /**
  * Schema for verification result output
