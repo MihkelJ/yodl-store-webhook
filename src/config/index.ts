@@ -146,13 +146,13 @@ const envSchema = z
       .string()
       .transform(str => {
         try {
-          return str ? JSON.parse(str) : ['IRN', 'PRK', 'SYR', 'CUB'];
+          return str ? JSON.parse(str) : [];
         } catch {
           throw new Error('SELF_DEFAULT_EXCLUDED_COUNTRIES must be a valid JSON array');
         }
       })
       .pipe(z.array(countryCodeSchema))
-      .default('["IRN", "PRK", "SYR", "CUB"]'),
+      .default('[]'),
     SELF_SESSION_TIMEOUT: z
       .string()
       .transform(Number)
