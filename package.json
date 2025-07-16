@@ -35,7 +35,7 @@
     "lodash": "^4.17.21",
     "redis": "^4.7.0",
     "typescript": "^5.7.3",
-    "viem": "^2.22.15",
+    "viem": "^2.31.7",
     "zod": "^3.24.1"
   },
   "devDependencies": {
