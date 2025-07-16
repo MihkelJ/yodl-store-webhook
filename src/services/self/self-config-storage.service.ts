@@ -121,10 +121,10 @@ export class SelfConfigStorageService extends DefaultConfigStore {
     }
 
     const identityConfig = beerTap.identityVerification;
-    const userDefinedData = JSON.stringify({
-      tapId,
-      walletAddress,
-    });
+    // const userDefinedData = JSON.stringify({
+    //   tapId,
+    //   walletAddress,
+    // });
 
     return {
       appName: config.self.appName,
@@ -143,7 +143,7 @@ export class SelfConfigStorageService extends DefaultConfigStore {
         nationality: identityConfig.requireNationality ?? false,
       },
 
-      userDefinedData: `${userDefinedData}`,
+      userDefinedData: `testing`,
     };
   }
 }
