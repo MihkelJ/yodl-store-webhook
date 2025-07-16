@@ -1,5 +1,6 @@
 import { AttestationId } from '@selfxyz/core';
 import { BigNumberish } from 'ethers';
+import { fromHex, isHex } from 'viem';
 import { userContextDataSchema } from '../../schemas/identity.schemas.js';
 import { findCompatibleTaps, getVerificationGroup } from '../../utils/tap-compatibility.js';
 import { RedisService } from '../redis.service.js';
@@ -74,12 +75,29 @@ export class SelfVerificationService {
         userContextData
       );
 
+      if (!verificationResult.isValidDetails.isValid && !verificationResult.isValidDetails.isMinimumAgeValid) {
+        return {
+          isVerified: false,
+          error: 'Invalid verification result',
+        };
+      }
+
       let contextData;
       try {
-        const parsedData = JSON.parse(JSON.stringify(userContextData));
+        const hexData = verificationResult.userData.userDefinedData;
+
+        // Add 0x prefix if not present
+        const formattedHexData = hexData.startsWith('0x') ? hexData : `0x${hexData}`;
+
+        if (!isHex(formattedHexData)) {
+          throw new Error('Invalid user context data: User defined data is not a valid hex string');
+        }
+
+        const stringData = fromHex(formattedHexData, 'string');
+        const parsedData = JSON.parse(stringData);
+
         contextData = userContextDataSchema.parse(parsedData);
-      } catch (error) {
-        console.error('Error parsing user context data', error);
+      } catch {
         return {
           isVerified: false,
           error: 'Invalid user context data: Failed to parse JSON',
