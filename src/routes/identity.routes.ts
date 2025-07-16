@@ -25,6 +25,8 @@ export const verifyIdentity = defaultEndpointsFactory.build({
     try {
       const { attestationId, proof, publicSignals, userContextData } = input;
 
+      logger.info(JSON.stringify(input));
+
       const result = await verificationService.verifyProof(attestationId, proof, publicSignals, userContextData);
 
       if (!result.isVerified) {
