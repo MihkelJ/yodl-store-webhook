@@ -25,7 +25,7 @@ export const verifyIdentity = defaultEndpointsFactory.build({
     try {
       const { attestationId, proof, pubSignals, userContextData } = input;
 
-      logger.info('Processing identity verification', { attestationId, userContextData });
+      logger.info('Processing identity verification', input);
 
       const result = await verificationService.verifyProof(attestationId, proof, pubSignals, userContextData);
 
