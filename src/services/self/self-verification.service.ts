@@ -97,7 +97,9 @@ export class SelfVerificationService {
         const parsedData = JSON.parse(stringData);
 
         contextData = userContextDataSchema.parse(parsedData);
-      } catch {
+        console.log('Parsed contextData:', contextData);
+      } catch (error) {
+        console.error('Context data parsing error:', error);
         return {
           isVerified: false,
           error: 'Invalid user context data: Failed to parse JSON',
@@ -151,10 +153,12 @@ export class SelfVerificationService {
         const compatibleTaps = findCompatibleTaps(tapId);
 
         for (const compatibleTap of compatibleTaps) {
-          const compatibleResult = await this.getCachedVerificationResult(walletAddress, compatibleTap.id!);
-          if (compatibleResult) {
-            cachedResult = compatibleResult;
-            break;
+          if (compatibleTap.id) {
+            const compatibleResult = await this.getCachedVerificationResult(walletAddress, compatibleTap.id);
+            if (compatibleResult) {
+              cachedResult = compatibleResult;
+              break;
+            }
           }
         }
       }
@@ -240,7 +244,9 @@ export class SelfVerificationService {
    */
   async removeVerificationResultForCompatibleTaps(walletAddress: string, tapId: string): Promise<void> {
     const verificationGroup = getVerificationGroup(tapId);
-    const deletePromises = verificationGroup.map(tap => this.removeVerificationResult(walletAddress, tap.id!));
+    const deletePromises = verificationGroup
+      .filter(tap => tap.id)
+      .map(tap => this.removeVerificationResult(walletAddress, tap.id!));
     await Promise.all(deletePromises);
   }
 
@@ -275,7 +281,9 @@ export class SelfVerificationService {
     result: VerificationResult
   ): Promise<void> {
     const verificationGroup = getVerificationGroup(tapId);
-    const cachePromises = verificationGroup.map(tap => this.cacheVerificationResult(walletAddress, tap.id!, result));
+    const cachePromises = verificationGroup
+      .filter(tap => tap.id)
+      .map(tap => this.cacheVerificationResult(walletAddress, tap.id!, result));
     await Promise.all(cachePromises);
   }
 

@@ -87,14 +87,14 @@ export const checkStatus = defaultEndpointsFactory.build({
   output: statusResponseSchema,
   handler: async ({ input, logger }) => {
     try {
-      const { userId, tapId } = input;
+      const { walletAddress, tapId } = input;
 
-      logger.info('Checking identity verification status', { userId, tapId });
+      logger.info('Checking identity verification status', { walletAddress, tapId });
 
-      const status = await verificationService.getVerificationStatus(userId, tapId);
+      const status = await verificationService.getVerificationStatus(walletAddress, tapId);
 
       logger.info('Identity verification status checked', {
-        userId,
+        walletAddress,
         tapId,
         isVerified: status.isVerified,
       });
