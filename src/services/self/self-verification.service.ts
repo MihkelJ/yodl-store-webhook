@@ -76,7 +76,7 @@ export class SelfVerificationService {
 
       let contextData;
       try {
-        const parsedData = JSON.parse(userContextData);
+        const parsedData = JSON.parse(JSON.stringify(userContextData));
         contextData = userContextDataSchema.parse(parsedData);
       } catch (error) {
         console.error('Error parsing user context data', error);
