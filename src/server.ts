@@ -63,8 +63,6 @@ async function startServer() {
   }
 }
 
-if (import.meta.url === new URL(import.meta.url).pathname) {
-  startServer().catch(() => {
-    process.exit(1);
-  });
-}
+startServer().catch(() => {
+  process.exit(1);
+});
