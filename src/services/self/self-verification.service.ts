@@ -66,8 +66,6 @@ export class SelfVerificationService {
     userContextData: string
   ): Promise<VerificationStatus> {
     try {
-      console.info('verifying proof', { attestationId, proof, pubSignals, userContextData });
-
       // Verify the proof
       const verificationResult = await this.verifierService.verifyProof(
         attestationId,
@@ -76,22 +74,10 @@ export class SelfVerificationService {
         userContextData
       );
 
-      if (!verificationResult.isValidDetails.isValid) {
-        console.error('verification failed', { attestationId, proof, pubSignals, userContextData });
-        console.error('verificationResult', verificationResult);
-        return {
-          isVerified: false,
-          error: 'Verification failed',
-        };
-      }
-
-      console.info('verificationResult', verificationResult);
       let contextData;
       try {
         const parsedData = JSON.parse(userContextData);
-        console.info('parsedData', parsedData);
         contextData = userContextDataSchema.parse(parsedData);
-        console.info('contextData', contextData);
       } catch (error) {
         console.error('Error parsing user context data', error);
         return {
@@ -270,11 +256,8 @@ export class SelfVerificationService {
     tapId: string,
     result: VerificationResult
   ): Promise<void> {
-    console.info('caching verification result for compatible taps', { walletAddress, tapId, result });
     const verificationGroup = getVerificationGroup(tapId);
-    console.info('verificationGroup', verificationGroup);
     const cachePromises = verificationGroup.map(tap => this.cacheVerificationResult(walletAddress, tap.id!, result));
-    console.info('cachePromises', cachePromises);
     await Promise.all(cachePromises);
   }
 

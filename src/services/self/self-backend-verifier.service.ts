@@ -34,9 +34,9 @@ export class SelfBackendVerifierService {
       config.self.appScope,
       config.self.endpoint,
       config.self.mockMode,
-      AllIds, // Use AllIds for all document types
+      AllIds,
       this.configStorage,
-      'hex' // Using hex for wallet addresses
+      'hex'
     );
   }
 

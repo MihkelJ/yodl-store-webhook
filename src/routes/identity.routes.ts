@@ -23,13 +23,9 @@ export const verifyIdentity = defaultEndpointsFactory.build({
   output: verificationResultSchema,
   handler: async ({ input, logger }) => {
     try {
-      const { attestationId, proof, pubSignals, userContextData } = input;
+      const { attestationId, proof, publicSignals, userContextData } = input;
 
-      logger.info(`${JSON.stringify(input)}`);
-
-      logger.info('Processing identity verification', input);
-
-      const result = await verificationService.verifyProof(attestationId, proof, pubSignals, userContextData);
+      const result = await verificationService.verifyProof(attestationId, proof, publicSignals, userContextData);
 
       if (!result.isVerified) {
         logger.warn('Identity verification failed', { error: result.error });
