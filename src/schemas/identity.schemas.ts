@@ -83,6 +83,7 @@ export const configResponseSchema = z
         minimumAge: z.number().min(18).max(99).optional(),
       })
       .optional(),
+    userDefinedData: z.string().optional(),
   })
   .partial();
 
