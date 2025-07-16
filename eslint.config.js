@@ -62,7 +62,7 @@ export default [
       // Disable base rules that are handled by TypeScript rules
       'no-unused-vars': 'off',
       'no-unused-expressions': 'off',
-      'no-console': ['error', { allow: ['error'] }],
+      'no-console': ['error', { allow: ['error', 'info'] }],
     },
   },
 ];
