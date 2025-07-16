@@ -138,6 +138,11 @@ export class SelfConfigStorageService extends DefaultConfigStore {
         name: false,
         nationality: identityConfig.requireNationality ?? false,
       },
+
+      userDefinedData: JSON.stringify({
+        tapId,
+        walletAddress,
+      }),
     };
   }
 }
