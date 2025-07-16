@@ -1,6 +1,7 @@
 import { RedisService } from '../redis.service.js';
 import { getSelfBackendVerifierService } from './self-backend-verifier.service.js';
 import { getSelfConfigStorageService } from './self-config-storage.service.js';
+import { getVerificationGroup, findCompatibleTaps } from '../../utils/tap-compatibility.js';
 
 /**
  * Verification result interface
@@ -99,8 +100,8 @@ export class SelfVerificationService {
         expiresAt,
       };
 
-      // Cache the verification result
-      await this.cacheVerificationResult(result.userIdentifier, tapId, verificationResult_final);
+      // Cache the verification result for this tap and all compatible taps
+      await this.cacheVerificationResultForCompatibleTaps(result.userIdentifier, tapId, verificationResult_final);
 
       return {
         isVerified: true,
@@ -123,7 +124,21 @@ export class SelfVerificationService {
    */
   async getVerificationStatus(userId: string, tapId: string): Promise<VerificationStatus> {
     try {
-      const cachedResult = await this.getCachedVerificationResult(userId, tapId);
+      // First check if there's a cached result for this specific tap
+      let cachedResult = await this.getCachedVerificationResult(userId, tapId);
+
+      // If not found, check compatible taps
+      if (!cachedResult) {
+        const compatibleTaps = findCompatibleTaps(tapId);
+        
+        for (const compatibleTap of compatibleTaps) {
+          const compatibleResult = await this.getCachedVerificationResult(userId, compatibleTap.id!);
+          if (compatibleResult) {
+            cachedResult = compatibleResult;
+            break;
+          }
+        }
+      }
 
       if (!cachedResult) {
         return {
@@ -135,8 +150,8 @@ export class SelfVerificationService {
       // Check if verification has expired
       const now = Date.now();
       if (now > cachedResult.expiresAt) {
-        // Remove expired verification
-        await this.removeVerificationResult(userId, tapId);
+        // Remove expired verification from all compatible taps
+        await this.removeVerificationResultForCompatibleTaps(userId, tapId);
         return {
           isVerified: false,
           error: 'Verification has expired',
@@ -199,6 +214,20 @@ export class SelfVerificationService {
   }
 
   /**
+   * Removes verification result from cache for all compatible taps
+   *
+   * @param userId - User identifier
+   * @param tapId - Beer tap identifier
+   */
+  async removeVerificationResultForCompatibleTaps(userId: string, tapId: string): Promise<void> {
+    const verificationGroup = getVerificationGroup(tapId);
+    const deletePromises = verificationGroup.map(tap => 
+      this.removeVerificationResult(userId, tap.id!)
+    );
+    await Promise.all(deletePromises);
+  }
+
+  /**
    * Caches verification result with TTL
    *
    * @param userId - User identifier
@@ -210,6 +239,21 @@ export class SelfVerificationService {
     const ttl = Math.ceil((result.expiresAt - Date.now()) / 1000); // TTL in seconds
 
     await this.redisService.setex(cacheKey, ttl, JSON.stringify(result));
+  }
+
+  /**
+   * Caches verification result for all compatible taps
+   *
+   * @param userId - User identifier
+   * @param tapId - Beer tap identifier
+   * @param result - Verification result to cache
+   */
+  private async cacheVerificationResultForCompatibleTaps(userId: string, tapId: string, result: VerificationResult): Promise<void> {
+    const verificationGroup = getVerificationGroup(tapId);
+    const cachePromises = verificationGroup.map(tap => 
+      this.cacheVerificationResult(userId, tap.id!, result)
+    );
+    await Promise.all(cachePromises);
   }
 
   /**
