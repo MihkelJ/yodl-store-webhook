@@ -2,6 +2,8 @@ import { isAddress } from 'viem';
 import { z } from 'zod';
 import { RetryStrategy } from '../types/queue.js';
 
+const countryCodeSchema = z.string().length(3, 'Country code must be ISO 3166-1 alpha-3 format (3 characters)');
+
 const beerTapSchema = z.object({
   id: z.string().optional(),
   transactionReceiverEns: z.string(),
@@ -31,6 +33,37 @@ const beerTapSchema = z.object({
   title: z.string(),
   location: z.string(),
   description: z.string().optional(),
+  identityVerification: z
+    .object({
+      enabled: z.boolean().default(false),
+      minimumAge: z
+        .number()
+        .min(18, 'Minimum age must be at least 18')
+        .max(99, 'Maximum age cannot exceed 99')
+        .default(18),
+      excludedCountries: z.array(countryCodeSchema).default([]),
+      ofacCheck: z.boolean().default(false),
+      requireNationality: z.boolean().default(false),
+      allowedNationalities: z.array(countryCodeSchema).default([]),
+      sessionTimeout: z
+        .number()
+        .min(300, 'Session timeout must be at least 5 minutes')
+        .max(3600, 'Session timeout cannot exceed 1 hour')
+        .default(1800),
+    })
+    .optional()
+    .refine(
+      data => {
+        if (data?.requireNationality && (!data.allowedNationalities || data.allowedNationalities.length === 0)) {
+          return false;
+        }
+        return true;
+      },
+      {
+        message: 'When requireNationality is true, allowedNationalities must contain at least one country code',
+        path: ['allowedNationalities'],
+      }
+    ),
 });
 
 const envSchema = z
@@ -93,6 +126,43 @@ const envSchema = z
       .refine(val => !val || val.trim().length > 0, {
         message: 'ThingsBoard password cannot be empty if provided',
       }),
+
+    // Self.xyz configuration
+    SELF_APP_NAME: z.string().default('TapThat'),
+    SELF_APP_SCOPE: z.string().default('tapthat-verification'),
+    SELF_ENDPOINT: z.string().url(),
+
+    // Self.xyz verification configuration
+    SELF_MOCK_MODE: z
+      .string()
+      .transform(val => val === 'true')
+      .default('false'),
+    SELF_DEFAULT_MINIMUM_AGE: z
+      .string()
+      .transform(Number)
+      .pipe(z.number().min(18, 'Minimum age must be at least 18').max(99, 'Maximum age cannot exceed 99'))
+      .default('18'),
+    SELF_DEFAULT_EXCLUDED_COUNTRIES: z
+      .string()
+      .transform(str => {
+        try {
+          return str ? JSON.parse(str) : ['IRN', 'PRK', 'SYR', 'CUB'];
+        } catch {
+          throw new Error('SELF_DEFAULT_EXCLUDED_COUNTRIES must be a valid JSON array');
+        }
+      })
+      .pipe(z.array(countryCodeSchema))
+      .default('["IRN", "PRK", "SYR", "CUB"]'),
+    SELF_SESSION_TIMEOUT: z
+      .string()
+      .transform(Number)
+      .pipe(
+        z
+          .number()
+          .min(300, 'Session timeout must be at least 5 minutes')
+          .max(3600, 'Session timeout cannot exceed 1 hour')
+      )
+      .default('1800'),
 
     // Development configuration
     DEV_DISABLE_AUTH: z
@@ -165,6 +235,15 @@ export const config = {
     serverUrl: env.THINGSBOARD_SERVER_URL,
     username: env.THINGSBOARD_USERNAME,
     password: env.THINGSBOARD_PASSWORD,
+  },
+  self: {
+    appName: env.SELF_APP_NAME,
+    appScope: env.SELF_APP_SCOPE,
+    endpoint: env.SELF_ENDPOINT,
+    mockMode: env.SELF_MOCK_MODE,
+    defaultMinimumAge: env.SELF_DEFAULT_MINIMUM_AGE,
+    defaultExcludedCountries: env.SELF_DEFAULT_EXCLUDED_COUNTRIES,
+    sessionTimeout: env.SELF_SESSION_TIMEOUT,
   },
   dev: {
     disableAuth: env.DEV_DISABLE_AUTH,
