@@ -5,6 +5,7 @@ import { healthEndpoint } from './routes/health.routes.js';
 import { txWebhook } from './routes/txWebhook.routes.js';
 import { beerTapsEndpoint } from './routes/beerTaps.routes.js';
 import { statusEndpoint } from './routes/status.js';
+import { verifyIdentity, generateConfig, checkStatus } from './routes/identity.routes.js';
 import { QueueManagerService } from './services/queue/queue-manager.service.js';
 
 const config = createConfig({
@@ -26,6 +27,15 @@ const routing: Routing = {
     'beer-taps': beerTapsEndpoint,
     status: {
       ':txHash': statusEndpoint,
+    },
+    identity: {
+      verify: verifyIdentity, // POST /v1/identity/verify
+      config: generateConfig, // POST /v1/identity/config
+      status: {
+        ':walletAddress': {
+          ':tapId': checkStatus, // GET /v1/identity/status/:walletAddress/:tapId
+        },
+      },
     },
   },
 };

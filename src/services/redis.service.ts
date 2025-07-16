@@ -204,4 +204,17 @@ export class RedisService {
       lastProcessedAt: metrics.lastProcessedAt ? new Date(metrics.lastProcessedAt) : undefined,
     };
   }
+
+  // Additional methods for Self.xyz verification caching
+  public async get(key: string): Promise<string | null> {
+    return await this.client.get(key);
+  }
+
+  public async setex(key: string, ttl: number, value: string): Promise<void> {
+    await this.client.setEx(key, ttl, value);
+  }
+
+  public async del(key: string): Promise<void> {
+    await this.client.del(key);
+  }
 }

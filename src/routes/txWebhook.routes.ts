@@ -3,6 +3,7 @@ import createHttpError from 'http-errors';
 import { ReasonPhrases, StatusCodes } from 'http-status-codes';
 import authMiddleware from '../middlewares/auth.middlewares.js';
 import txValidationMiddleware from '../middlewares/validation.middlewares.js';
+import walletIdentityVerificationMiddleware from '../middlewares/wallet-identity.middlewares.js';
 import { statusResponseSchema } from '../schemas/common.schemas.js';
 import { txInputSchema } from '../schemas/tx.schemas.js';
 import { QueueManagerService } from '../services/queue/queue-manager.service.js';
@@ -10,10 +11,21 @@ import { QueueManagerService } from '../services/queue/queue-manager.service.js'
 export const txWebhook = defaultEndpointsFactory
   .addMiddleware(authMiddleware)
   .addMiddleware(txValidationMiddleware)
+  .addMiddleware(walletIdentityVerificationMiddleware)
   .build({
     method: 'post',
-    handler: async ({ options: { transaction }, logger }) => {
+    handler: async ({ options: { transaction, walletVerificationResult }, logger }) => {
       try {
+        // Log identity verification result if present
+        if (walletVerificationResult) {
+          logger.info('Transaction processed with verified wallet identity', {
+            txHash: transaction.txHash,
+            walletAddress: transaction.senderAddress,
+            verifiedAt: walletVerificationResult.verifiedAt,
+            nationality: walletVerificationResult.nationality,
+          });
+        }
+
         // Get the queue manager instance
         const queueManager = QueueManagerService.getInstance();
 
