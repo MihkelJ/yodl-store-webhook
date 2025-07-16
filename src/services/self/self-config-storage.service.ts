@@ -1,3 +1,5 @@
+import { Country3LetterCode } from '@selfxyz/common/constants/countries';
+import { SelfApp } from '@selfxyz/common/utils/appType';
 import { DefaultConfigStore } from '@selfxyz/core';
 import { config } from '../../config/index.js';
 
@@ -22,7 +24,7 @@ export class SelfConfigStorageService extends DefaultConfigStore {
       // Return default configuration if no tap-specific config or verification disabled
       return {
         minimumAge: config.self.defaultMinimumAge,
-        excludedCountries: config.self.defaultExcludedCountries as any,
+        excludedCountries: config.self.defaultExcludedCountries as Country3LetterCode[],
         ofac: true,
       };
     }
@@ -37,9 +39,9 @@ export class SelfConfigStorageService extends DefaultConfigStore {
 
     // Add excluded countries if specified
     if (identityConfig.excludedCountries && identityConfig.excludedCountries.length > 0) {
-      verificationConfig.excludedCountries = identityConfig.excludedCountries as any;
+      verificationConfig.excludedCountries = identityConfig.excludedCountries as Country3LetterCode[];
     } else if (config.self.defaultExcludedCountries.length > 0) {
-      verificationConfig.excludedCountries = config.self.defaultExcludedCountries as any;
+      verificationConfig.excludedCountries = config.self.defaultExcludedCountries as Country3LetterCode[];
     }
 
     return verificationConfig;
@@ -76,6 +78,7 @@ export class SelfConfigStorageService extends DefaultConfigStore {
       // Fallback to default configuration
       return 'default';
     } catch (error) {
+      console.error('Error getting action ID', error);
       // If parsing fails, return default configuration
       return 'default';
     }
@@ -110,7 +113,7 @@ export class SelfConfigStorageService extends DefaultConfigStore {
    * @param userId - User identifier
    * @returns configuration object for SelfAppBuilder
    */
-  async getFrontendConfig(tapId: string, userId: string) {
+  async getFrontendConfig(tapId: string, walletAddress: string): Promise<Partial<SelfApp>> {
     const beerTap = config.beerTaps.find(tap => tap.id === tapId);
 
     if (!beerTap || !beerTap.identityVerification?.enabled) {
@@ -123,19 +126,18 @@ export class SelfConfigStorageService extends DefaultConfigStore {
       appName: config.self.appName,
       scope: config.self.appScope,
       endpoint: config.self.endpoint,
-      userId,
+
+      userId: walletAddress,
+      userIdType: 'hex',
+
       disclosures: {
         minimumAge: identityConfig.minimumAge || config.self.defaultMinimumAge,
-        excludedCountries: identityConfig.excludedCountries || config.self.defaultExcludedCountries,
+        excludedCountries: (identityConfig.excludedCountries ||
+          config.self.defaultExcludedCountries) as Country3LetterCode[],
         ofac: identityConfig.ofacCheck ?? true,
-        name: false, // Typically not needed for beer taps
+        name: false,
         nationality: identityConfig.requireNationality ?? false,
       },
-      userDefinedData: JSON.stringify({
-        tapId,
-        transactionMemo: beerTap.transactionMemo,
-        timestamp: Date.now(),
-      }),
     };
   }
 }

@@ -1,15 +1,15 @@
 import { defaultEndpointsFactory } from 'express-zod-api';
 import createHttpError from 'http-errors';
 import { ReasonPhrases, StatusCodes } from 'http-status-codes';
-import { getSelfVerificationService } from '../services/self/self-verification.service.js';
 import {
-  verificationInputSchema,
-  verificationResultSchema,
   configRequestSchema,
   configResponseSchema,
   statusRequestSchema,
   statusResponseSchema,
+  verificationInputSchema,
+  verificationResultSchema,
 } from '../schemas/identity.schemas.js';
+import { getSelfVerificationService } from '../services/self/self-verification.service.js';
 
 const verificationService = getSelfVerificationService();
 
@@ -57,18 +57,13 @@ export const generateConfig = defaultEndpointsFactory.build({
   output: configResponseSchema,
   handler: async ({ input, logger }) => {
     try {
-      const { tapId, userId } = input;
+      const { tapId, walletAddress } = input;
 
-      logger.info('Generating identity verification config', { tapId, userId });
-
-      // Check if verification is required for this tap
       if (!verificationService.isVerificationRequired(tapId)) {
         throw createHttpError(StatusCodes.BAD_REQUEST, `Identity verification not required for tap: ${tapId}`);
       }
 
-      const config = await verificationService.getFrontendConfig(tapId, userId);
-
-      logger.info('Identity verification config generated', { tapId, userId });
+      const config = await verificationService.getFrontendConfig(tapId, walletAddress);
 
       return config;
     } catch (error) {
