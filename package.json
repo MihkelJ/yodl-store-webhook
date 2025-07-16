@@ -12,7 +12,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix"
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "test": "yarn lint && yarn typecheck && yarn format:check",
+    "generate:client": "tsx src/scripts/generateFrontendClient.ts"
   },
   "keywords": [
     "yodl",
