@@ -7,9 +7,9 @@ type BeerTap = (typeof config.beerTaps)[0];
 
 /**
  * Checks if two identity verification configurations are compatible
- * 
+ *
  * @param config1 - First identity verification config
- * @param config2 - Second identity verification config 
+ * @param config2 - Second identity verification config
  * @returns True if configurations are compatible for shared verification
  */
 function areIdentityConfigsCompatible(
@@ -48,22 +48,22 @@ function arraysEqual<T>(arr1: T[], arr2: T[]): boolean {
   if (arr1.length !== arr2.length) {
     return false;
   }
-  
+
   const sorted1 = [...arr1].sort();
   const sorted2 = [...arr2].sort();
-  
+
   return sorted1.every((val, index) => val === sorted2[index]);
 }
 
 /**
  * Finds all beer taps that have compatible identity verification settings with the given tap
- * 
+ *
  * @param tapId - The ID of the tap to find compatible taps for
  * @returns Array of compatible beer tap objects
  */
 export function findCompatibleTaps(tapId: string): BeerTap[] {
   const targetTap = config.beerTaps.find(tap => tap.id === tapId);
-  
+
   if (!targetTap) {
     return [];
   }
@@ -81,13 +81,13 @@ export function findCompatibleTaps(tapId: string): BeerTap[] {
 /**
  * Gets all beer taps that share the same identity verification requirements as the given tap
  * (including the tap itself)
- * 
+ *
  * @param tapId - The ID of the tap to find the verification group for
  * @returns Array of all taps in the same verification group
  */
 export function getVerificationGroup(tapId: string): BeerTap[] {
   const targetTap = config.beerTaps.find(tap => tap.id === tapId);
-  
+
   if (!targetTap) {
     return [];
   }
@@ -99,7 +99,7 @@ export function getVerificationGroup(tapId: string): BeerTap[] {
 
 /**
  * Generates a hash for identity verification configuration to use as a cache key
- * 
+ *
  * @param identityConfig - The identity verification configuration
  * @returns Hash string for cache key generation
  */
@@ -122,7 +122,7 @@ export function getVerificationConfigHash(identityConfig: BeerTap['identityVerif
   let hash = 0;
   for (let i = 0; i < configString.length; i++) {
     const char = configString.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32-bit integer
   }
 
@@ -131,7 +131,7 @@ export function getVerificationConfigHash(identityConfig: BeerTap['identityVerif
 
 /**
  * Checks if a tap requires identity verification
- * 
+ *
  * @param tapId - The ID of the tap to check
  * @returns True if the tap requires identity verification
  */
@@ -142,7 +142,7 @@ export function requiresIdentityVerification(tapId: string): boolean {
 
 /**
  * Gets the session timeout for a tap's identity verification
- * 
+ *
  * @param tapId - The ID of the tap
  * @returns Session timeout in seconds, or default if not specified
  */

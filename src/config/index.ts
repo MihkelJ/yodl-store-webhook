@@ -42,7 +42,7 @@ const beerTapSchema = z.object({
         .max(99, 'Maximum age cannot exceed 99')
         .default(18),
       excludedCountries: z.array(countryCodeSchema).default([]),
-      ofacCheck: z.boolean().default(true),
+      ofacCheck: z.boolean().default(false),
       requireNationality: z.boolean().default(false),
       allowedNationalities: z.array(countryCodeSchema).default([]),
       sessionTimeout: z

@@ -130,7 +130,7 @@ export class SelfVerificationService {
       // If not found, check compatible taps
       if (!cachedResult) {
         const compatibleTaps = findCompatibleTaps(tapId);
-        
+
         for (const compatibleTap of compatibleTaps) {
           const compatibleResult = await this.getCachedVerificationResult(userId, compatibleTap.id!);
           if (compatibleResult) {
@@ -221,9 +221,7 @@ export class SelfVerificationService {
    */
   async removeVerificationResultForCompatibleTaps(userId: string, tapId: string): Promise<void> {
     const verificationGroup = getVerificationGroup(tapId);
-    const deletePromises = verificationGroup.map(tap => 
-      this.removeVerificationResult(userId, tap.id!)
-    );
+    const deletePromises = verificationGroup.map(tap => this.removeVerificationResult(userId, tap.id!));
     await Promise.all(deletePromises);
   }
 
@@ -248,11 +246,13 @@ export class SelfVerificationService {
    * @param tapId - Beer tap identifier
    * @param result - Verification result to cache
    */
-  private async cacheVerificationResultForCompatibleTaps(userId: string, tapId: string, result: VerificationResult): Promise<void> {
+  private async cacheVerificationResultForCompatibleTaps(
+    userId: string,
+    tapId: string,
+    result: VerificationResult
+  ): Promise<void> {
     const verificationGroup = getVerificationGroup(tapId);
-    const cachePromises = verificationGroup.map(tap => 
-      this.cacheVerificationResult(userId, tap.id!, result)
-    );
+    const cachePromises = verificationGroup.map(tap => this.cacheVerificationResult(userId, tap.id!, result));
     await Promise.all(cachePromises);
   }
 

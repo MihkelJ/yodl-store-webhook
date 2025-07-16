@@ -38,9 +38,7 @@ const walletIdentityVerificationMiddleware = new Middleware({
     const transactionMemo = transaction.memo;
 
     // Find the matching beer tap configuration based on transaction memo
-    const matchingTap = config.beerTaps.find(tap => 
-      transactionMemo.includes(tap.transactionMemo)
-    );
+    const matchingTap = config.beerTaps.find(tap => transactionMemo.includes(tap.transactionMemo));
 
     if (!matchingTap) {
       logger.warn('No matching beer tap found for transaction memo', {
@@ -49,10 +47,7 @@ const walletIdentityVerificationMiddleware = new Middleware({
         txHash: transaction.txHash,
       });
 
-      throw createHttpError(
-        StatusCodes.BAD_REQUEST,
-        'No matching beer tap found for transaction memo'
-      );
+      throw createHttpError(StatusCodes.BAD_REQUEST, 'No matching beer tap found for transaction memo');
     }
 
     const tapId = matchingTap.id || 'default';
