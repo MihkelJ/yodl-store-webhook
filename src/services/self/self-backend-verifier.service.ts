@@ -1,6 +1,16 @@
-import { SelfBackendVerifier, AllIds } from '@selfxyz/core';
+import { AllIds, AttestationId, SelfBackendVerifier } from '@selfxyz/core';
+import { BigNumberish } from 'ethers';
 import { config } from '../../config/index.js';
 import { getSelfConfigStorageService } from './self-config-storage.service.js';
+
+/**
+ * VcAndDiscloseProof type from Self.xyz
+ */
+type VcAndDiscloseProof = {
+  a: [BigNumberish, BigNumberish];
+  b: [[BigNumberish, BigNumberish], [BigNumberish, BigNumberish]];
+  c: [BigNumberish, BigNumberish];
+};
 
 /**
  * Self.xyz backend verifier service for identity verification
@@ -39,29 +49,13 @@ export class SelfBackendVerifierService {
    * @param userContextData - User context data (contains tap ID, etc.)
    * @returns Promise resolving to verification result
    */
-  async verifyProof(attestationId: 1 | 2, proof: any, pubSignals: any, userContextData: string) {
-    try {
-      const result = await this.verifier.verify(attestationId, proof, pubSignals, userContextData);
-
-      return {
-        success: true,
-        result: {
-          isValid: result.isValidDetails.isValid,
-          isAgeValid: result.isValidDetails.isMinimumAgeValid,
-          isOfacValid: result.isValidDetails.isOfacValid,
-          nationality: result.discloseOutput?.nationality,
-          userIdentifier: result.userData.userIdentifier,
-          attestationId: result.attestationId,
-        },
-        error: null,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        result: null,
-        error: error instanceof Error ? error.message : 'Unknown verification error',
-      };
-    }
+  async verifyProof(
+    attestationId: AttestationId,
+    proof: VcAndDiscloseProof,
+    pubSignals: BigNumberish[],
+    userContextData: string
+  ) {
+    return await this.verifier.verify(attestationId, proof, pubSignals, userContextData);
   }
 
   /**
@@ -88,11 +82,11 @@ export class SelfBackendVerifierService {
    * Gets frontend configuration for QR code generation
    *
    * @param tapId - Beer tap identifier
-   * @param userId - User identifier
+   * @param walletAddress - User wallet address
    * @returns configuration object for SelfAppBuilder
    */
-  async getFrontendConfig(tapId: string, userId: string) {
-    return this.configStorage.getFrontendConfig(tapId, userId);
+  async getFrontendConfig(tapId: string, walletAddress: string) {
+    return this.configStorage.getFrontendConfig(tapId, walletAddress);
   }
 }
 

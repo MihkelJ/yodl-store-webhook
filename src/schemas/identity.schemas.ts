@@ -1,3 +1,4 @@
+import { isAddress } from 'viem';
 import { z } from 'zod';
 
 /**
@@ -7,8 +8,14 @@ export const verificationInputSchema = z.object({
   attestationId: z.union([z.literal(1), z.literal(2)], {
     errorMap: () => ({ message: 'Attestation ID must be 1 or 2' }),
   }),
-  proof: z.any().describe('Cryptographic proof from Self.xyz'),
-  pubSignals: z.any().describe('Public signals from Self.xyz proof'),
+  proof: z
+    .object({
+      a: z.tuple([z.string(), z.string()]),
+      b: z.tuple([z.tuple([z.string(), z.string()]), z.tuple([z.string(), z.string()])]),
+      c: z.tuple([z.string(), z.string()]),
+    })
+    .describe('VcAndDiscloseProof from Self.xyz'),
+  pubSignals: z.array(z.string()).describe('Array of BigNumberish public signals from Self.xyz proof'),
   userContextData: z.string().min(1, 'User context data is required'),
 });
 
@@ -38,32 +45,46 @@ export const verificationResultSchema = z.object({
  */
 export const configRequestSchema = z.object({
   tapId: z.string().min(1, 'Beer tap ID is required'),
-  userId: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'User ID must be a valid wallet address'),
+  walletAddress: z.string().refine(isAddress, 'User ID must be a valid wallet address'),
 });
 
 /**
  * Schema for frontend configuration response
  */
-export const configResponseSchema = z.object({
-  appName: z.string(),
-  scope: z.string(),
-  endpoint: z.string().url(),
-  userId: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'User ID must be a valid wallet address'),
-  disclosures: z.object({
-    minimumAge: z.number().min(18).max(99),
-    excludedCountries: z.array(z.string().length(3)),
-    ofac: z.boolean(),
-    name: z.boolean(),
-    nationality: z.boolean(),
-  }),
-  userDefinedData: z.string(),
-});
+export const configResponseSchema = z
+  .object({
+    appName: z.string().optional(),
+    logoBase64: z.string().optional(),
+    endpointType: z.enum(['https', 'celo', 'staging_celo', 'staging_https']).optional(),
+    endpoint: z.string().url().optional(),
+    header: z.string().optional(),
+    scope: z.string().optional(),
+    sessionId: z.string().optional(),
+    userId: z.string().refine(isAddress, 'User ID must be a valid wallet address').optional(),
+    userIdType: z.enum(['hex', 'uuid']).optional(),
+    devMode: z.boolean().optional(),
+    disclosures: z
+      .object({
+        issuing_state: z.boolean().optional(),
+        name: z.boolean().optional(),
+        passport_number: z.boolean().optional(),
+        nationality: z.boolean().optional(),
+        date_of_birth: z.boolean().optional(),
+        gender: z.boolean().optional(),
+        expiry_date: z.boolean().optional(),
+        ofac: z.boolean().optional(),
+        excludedCountries: z.array(z.string().length(3)).optional(),
+        minimumAge: z.number().min(18).max(99).optional(),
+      })
+      .optional(),
+  })
+  .partial();
 
 /**
  * Schema for verification status request
  */
 export const statusRequestSchema = z.object({
-  userId: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'User ID must be a valid wallet address'),
+  walletAddress: z.string().refine(isAddress, 'User ID must be a valid wallet address'),
   tapId: z.string().min(1, 'Beer tap ID is required'),
 });
 

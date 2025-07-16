@@ -1,11 +1,11 @@
 import 'dotenv/config';
 import { createConfig, createServer, Routing } from 'express-zod-api';
 import { config as appConfig } from './config/index.js';
-import { healthEndpoint } from './routes/health.routes.js';
-import { txWebhook } from './routes/txWebhook.routes.js';
 import { beerTapsEndpoint } from './routes/beerTaps.routes.js';
+import { healthEndpoint } from './routes/health.routes.js';
+import { checkStatus, generateConfig, verifyIdentity } from './routes/identity.routes.js';
 import { statusEndpoint } from './routes/status.js';
-import { verifyIdentity, generateConfig, checkStatus } from './routes/identity.routes.js';
+import { txWebhook } from './routes/txWebhook.routes.js';
 import { QueueManagerService } from './services/queue/queue-manager.service.js';
 
 const config = createConfig({
@@ -20,7 +20,7 @@ const config = createConfig({
   startupLogo: false,
 });
 
-const routing: Routing = {
+export const routing: Routing = {
   v1: {
     health: healthEndpoint,
     callback: txWebhook,
@@ -29,18 +29,17 @@ const routing: Routing = {
       ':txHash': statusEndpoint,
     },
     identity: {
-      verify: verifyIdentity, // POST /v1/identity/verify
-      config: generateConfig, // POST /v1/identity/config
+      verify: verifyIdentity,
+      config: generateConfig,
       status: {
         ':walletAddress': {
-          ':tapId': checkStatus, // GET /v1/identity/status/:walletAddress/:tapId
+          ':tapId': checkStatus,
         },
       },
     },
   },
 };
 
-// Initialize queue system and start server
 async function startServer() {
   try {
     const queueManager = QueueManagerService.getInstance();
@@ -64,6 +63,8 @@ async function startServer() {
   }
 }
 
-startServer().catch(() => {
-  process.exit(1);
-});
+if (import.meta.url === new URL(import.meta.url).pathname) {
+  startServer().catch(() => {
+    process.exit(1);
+  });
+}
