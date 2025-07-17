@@ -117,7 +117,7 @@ export class SelfVerificationService {
         expiresAt: Date.now() + this.configStorage.getSessionTimeout(contextData.tapId) * 1000,
       };
 
-      // Cache the verification result for this tap and all compatible taps
+      // Cache verification result for this tap and all compatible taps
       await this.cacheVerificationResultForCompatibleTaps(
         contextData.walletAddress,
         contextData.tapId,
