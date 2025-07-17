@@ -1,26 +1,76 @@
-import { defaultEndpointsFactory } from 'express-zod-api';
+import { defaultEndpointsFactory, ResultHandler, EndpointsFactory } from 'express-zod-api';
 import createHttpError from 'http-errors';
 import { ReasonPhrases, StatusCodes } from 'http-status-codes';
+import { z } from 'zod';
 import {
   configRequestSchema,
   configResponseSchema,
   statusRequestSchema,
   statusResponseSchema,
   verificationInputSchema,
-  verificationResultSchema,
+  selfVerificationResponseSchema,
 } from '../schemas/identity.schemas.js';
 import { getSelfVerificationService } from '../services/self/self-verification.service.js';
 
 const verificationService = getSelfVerificationService();
 
 /**
+ * Error schema for Self.xyz responses
+ */
+const selfErrorSchema = z.object({
+  status: z.literal('error'),
+  error: z.string(),
+});
+
+/**
+ * Custom result handler for Self.xyz compatible responses
+ */
+const selfResultHandler = new ResultHandler({
+  positive: () => ({
+    statusCode: 200,
+    schema: selfVerificationResponseSchema,
+  }),
+  negative: [
+    {
+      statusCode: [400, 500],
+      schema: selfErrorSchema,
+    },
+  ],
+  handler: ({ error, response, output }) => {
+    if (error) {
+      const statusCode = 'statusCode' in error ? (error as { statusCode: number }).statusCode : 500;
+      response.status(statusCode).json({
+        status: 'error',
+        error: error.message,
+      });
+      return;
+    }
+
+    if (!output) {
+      response.status(500).json({
+        status: 'error',
+        error: 'No output received',
+      });
+      return;
+    }
+
+    response.status(200).json(output as { status: 'success'; result: boolean });
+  },
+});
+
+/**
+ * Custom endpoints factory for Self.xyz verification
+ */
+const selfEndpointsFactory = new EndpointsFactory(selfResultHandler);
+
+/**
  * POST /v1/identity/verify
  * Verifies a Self.xyz proof and caches the result
  */
-export const verifyIdentity = defaultEndpointsFactory.build({
+export const verifyIdentity = selfEndpointsFactory.build({
   method: 'post',
   input: verificationInputSchema,
-  output: verificationResultSchema,
+  output: selfVerificationResponseSchema,
   handler: async ({ input, logger }) => {
     try {
       const { attestationId, proof, publicSignals, userContextData } = input;
@@ -36,7 +86,10 @@ export const verifyIdentity = defaultEndpointsFactory.build({
         });
       }
 
-      return result;
+      return {
+        status: 'success' as const,
+        result: result.isVerified,
+      };
     } catch (error) {
       logger.error('Identity verification error', { error });
       throw createHttpError(StatusCodes.INTERNAL_SERVER_ERROR, ReasonPhrases.INTERNAL_SERVER_ERROR);

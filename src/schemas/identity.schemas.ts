@@ -8,24 +8,11 @@ import { z } from 'zod';
 export const verificationInputSchema = z.object({}).passthrough();
 
 /**
- * Schema for verification result output
+ * Schema for Self.xyz compatible verification response
  */
-export const verificationResultSchema = z.object({
-  isVerified: z.boolean(),
-  result: z
-    .object({
-      isValid: z.boolean(),
-      isAgeValid: z.boolean(),
-      isOfacValid: z.boolean(),
-      nationality: z.string().optional(),
-      userIdentifier: z.string(),
-      attestationId: z.number(),
-      verifiedAt: z.number(),
-      expiresAt: z.number(),
-    })
-    .optional(),
-  error: z.string().optional(),
-  cachedAt: z.number().optional(),
+export const selfVerificationResponseSchema = z.object({
+  status: z.literal('success'),
+  result: z.boolean(),
 });
 
 /**
