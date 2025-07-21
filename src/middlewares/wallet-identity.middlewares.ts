@@ -1,39 +1,19 @@
 import { Middleware } from 'express-zod-api';
 import createHttpError from 'http-errors';
 import { StatusCodes } from 'http-status-codes';
-import { z } from 'zod';
-import { getSelfVerificationService } from '../services/self/self-verification.service.js';
 import { config } from '../config/index.js';
+import { getSelfVerificationService } from '../services/self/self-verification.service.js';
+import type { Payment } from '../types/transaction.js';
 
 const verificationService = getSelfVerificationService();
 
 /**
- * Wallet identity verification middleware for transaction processing
- *
- * @description
- * This middleware validates that the wallet address sending the transaction
- * has completed identity verification when required by the specific beer tap.
- * It extracts the wallet address from the transaction, finds the matching
- * beer tap config based on the transaction memo, and checks cached
- * verification results.
- *
- * @throws {Error} "Identity verification required" - If verification is required but missing
- * @throws {Error} "Identity verification expired" - If verification has expired
- * @throws {Error} "Identity verification failed" - If verification is invalid
- * @throws {Error} "No matching beer tap found" - If no tap matches the transaction memo
- *
- * @returns {Promise<{ walletVerificationResult?: any }>} Verification result if successful
+ * Verifies wallet identity when required by beer tap configuration
  */
 const walletIdentityVerificationMiddleware = new Middleware({
-  input: z.object({
-    transaction: z.object({
-      senderAddress: z.string(),
-      txHash: z.string(),
-      memo: z.string(),
-    }),
-  }),
-  handler: async ({ input, logger }) => {
-    const { transaction } = input;
+  handler: async ({ options, logger }) => {
+    const { transaction } = options as { transaction: Payment };
+
     const walletAddress = transaction.senderAddress;
     const transactionMemo = transaction.memo;
 
