@@ -122,7 +122,7 @@ export class QueueIntegrationService extends EventEmitter {
           beerTapId,
           config.thingsBoardDeviceId,
           config.thingsBoardServerUrl,
-          30000 // Reduced to 30 seconds
+          60000
         );
 
         if (!isReady) {
@@ -140,6 +140,7 @@ export class QueueIntegrationService extends EventEmitter {
           serverUrl: appConfig.thingsBoard.serverUrl,
           username: appConfig.thingsBoard.username!,
           password: appConfig.thingsBoard.password!,
+          rpcTimeout: appConfig.thingsBoard.rpcTimeout,
         });
 
         if (!triggerResponse.ok) {

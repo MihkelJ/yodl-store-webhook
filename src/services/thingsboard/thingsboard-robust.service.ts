@@ -7,6 +7,7 @@ interface ThingsBoardConfig {
   serverUrl: string;
   username: string;
   password: string;
+  rpcTimeout: number;
 }
 
 interface MessageToThingsBoard {
@@ -58,7 +59,7 @@ export async function communicateWithThingsBoard({
         method,
         params,
         persistent: false,
-        timeout: 5000,
+        timeout: config.rpcTimeout,
       }),
     });
 
@@ -100,7 +101,9 @@ export async function readFromThingsBoard({
 
     const attributesData = await response.json();
 
-    const cupSizeAttribute = attributesData.find((attr: any) => attr.key === 'cupSize');
+    const cupSizeAttribute = attributesData.find(
+      (attr: { key: string; value: unknown; lastUpdateTs: number }) => attr.key === 'cupSize'
+    );
     if (!cupSizeAttribute) {
       throw new Error(`No 'cupSize' attribute found for device ${deviceId}`);
     }

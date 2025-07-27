@@ -127,6 +127,8 @@ const envSchema = z
         message: 'ThingsBoard password cannot be empty if provided',
       }),
 
+    // ThingsBoard RPC timeout configuration for global devices
+    THINGSBOARD_RPC_TIMEOUT: z.string().transform(Number).pipe(z.number().min(5000).max(60000)).default('15000'),
     // Self.xyz configuration
     SELF_APP_NAME: z.string().default('TapThat'),
     SELF_APP_SCOPE: z.string().default('tapthat-verification'),
@@ -235,6 +237,7 @@ export const config = {
     serverUrl: env.THINGSBOARD_SERVER_URL,
     username: env.THINGSBOARD_USERNAME,
     password: env.THINGSBOARD_PASSWORD,
+    rpcTimeout: env.THINGSBOARD_RPC_TIMEOUT,
   },
   self: {
     appName: env.SELF_APP_NAME,

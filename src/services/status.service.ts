@@ -114,6 +114,7 @@ export class StatusManager extends EventEmitter {
       serverUrl: appConfig.thingsBoard.serverUrl,
       username: appConfig.thingsBoard.username!,
       password: appConfig.thingsBoard.password!,
+      rpcTimeout: appConfig.thingsBoard.rpcTimeout,
     });
 
     const transformedPromise = requestPromise
@@ -184,7 +185,7 @@ export class StatusManager extends EventEmitter {
     beerTapId: string,
     deviceId: string,
     serverUrl: string,
-    timeoutMs = 30000
+    timeoutMs = 60000
   ): Promise<boolean> {
     const startTime = Date.now();
 
@@ -208,7 +209,7 @@ export class StatusManager extends EventEmitter {
       }
 
       // Wait for 5 seconds before checking again
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     return false;
