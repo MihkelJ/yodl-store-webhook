@@ -22,42 +22,100 @@ import { fetchTransaction } from '../services/transaction.service.js';
  * @throws {HttpError} - 402 if invoice amount doesn't match any valid beer amount
  */
 const txValidationMiddleware = new Middleware({
-  handler: async ({ input: { txHash }, logger }) => {
-    const transaction = await fetchTransaction(txHash);
+  handler: async ({ input: { txHash }, options, logger }) => {
+    const middlewareStartTime = Date.now();
+    const { requestId, startTime } = options || {};
+    const requestStartTime = typeof startTime === 'number' ? startTime : middlewareStartTime;
+    
+    logger.info('Starting transaction validation middleware', {
+      requestId,
+      txHash,
+      middlewareStartTime: middlewareStartTime - requestStartTime,
+    });
+
+    const transaction = await fetchTransaction(txHash, logger);
 
     const { memo, invoiceCurrency, invoiceAmount, receiverEnsPrimaryName } = transaction;
+
+    logger.info('Transaction fetched successfully', {
+      requestId,
+      txHash,
+      senderAddress: transaction.senderAddress,
+      receiverAddress: transaction.receiverAddress,
+      receiverEnsPrimaryName,
+      invoiceAmount,
+      invoiceCurrency,
+      memo,
+      availableTaps: config.beerTaps.map(tap => ({
+        id: tap.id || 'unnamed',
+        transactionMemo: tap.transactionMemo,
+        transactionReceiverEns: tap.transactionReceiverEns,
+        transactionCurrency: tap.transactionCurrency,
+        transactionAmount: tap.transactionAmount,
+      })),
+    });
 
     const validMethod = config.beerTaps.find(tap => memo.includes(tap.transactionMemo));
 
     if (!validMethod) {
-      logger.error('Method not found', { memo, txHash });
+      logger.error('No matching beer tap method found', {
+        requestId,
+        txHash,
+        memo,
+        availableMemos: config.beerTaps.map(tap => tap.transactionMemo),
+      });
       throw createHttpError(StatusCodes.BAD_REQUEST);
     }
 
+    logger.info('Found matching beer tap method', {
+      requestId,
+      txHash,
+      tapId: validMethod.id || 'unnamed',
+      transactionMemo: validMethod.transactionMemo,
+    });
+
     if (invoiceCurrency !== validMethod.transactionCurrency) {
-      logger.error('Invalid invoice currency', {
-        invoiceCurrency,
+      logger.error('Invoice currency mismatch', {
+        requestId,
         txHash,
+        invoiceCurrency,
+        expectedCurrency: validMethod.transactionCurrency,
+        tapId: validMethod.id || 'unnamed',
       });
       throw createHttpError(StatusCodes.FORBIDDEN);
     }
 
     if (receiverEnsPrimaryName !== validMethod.transactionReceiverEns) {
-      logger.error('Invalid receiver ENS name', {
-        receiverEnsPrimaryName,
+      logger.error('Receiver ENS name mismatch', {
+        requestId,
         txHash,
+        receiverEnsPrimaryName,
+        expectedReceiverEns: validMethod.transactionReceiverEns,
+        tapId: validMethod.id || 'unnamed',
       });
       throw createHttpError(StatusCodes.NOT_FOUND);
     }
 
     if (Number(invoiceAmount) < Number(validMethod.transactionAmount)) {
-      logger.error('Invalid invoice amount', {
+      logger.error('Invoice amount below required minimum', {
+        requestId,
+        txHash,
         invoiceAmount,
         requiredAmount: validMethod.transactionAmount,
-        txHash,
+        shortfall: Number(validMethod.transactionAmount) - Number(invoiceAmount),
+        tapId: validMethod.id || 'unnamed',
       });
       throw createHttpError(StatusCodes.PAYMENT_REQUIRED);
     }
+
+    const validationDuration = Date.now() - middlewareStartTime;
+    
+    logger.info('Transaction validation completed successfully', {
+      requestId,
+      txHash,
+      tapId: validMethod.id || 'unnamed',
+      validationDuration,
+    });
 
     return {
       validMethod,

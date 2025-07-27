@@ -23,17 +23,20 @@ export class QueueService<T> extends EventEmitter {
   private processingItems = new Map<string, QueueItem<T>>();
   private hasItemsCallback?: (hasItems: boolean) => void;
   private processor?: QueueProcessor<T>;
+  private logger?: any;
 
   constructor(
     queueName: string,
     redis: RedisService,
     config: Partial<QueueConfig> = {},
-    processor?: QueueProcessor<T>
+    processor?: QueueProcessor<T>,
+    logger?: any
   ) {
     super();
     this.queueName = queueName;
     this.redis = redis;
     this.processor = processor;
+    this.logger = logger;
     this.config = {
       maxAttempts: config.maxAttempts || 3,
       retryStrategy: config.retryStrategy || RetryStrategy.EXPONENTIAL,
@@ -85,7 +88,11 @@ export class QueueService<T> extends EventEmitter {
     this.isProcessing = true;
     this.processingInterval = setInterval(() => {
       this.processQueueItems().catch(error => {
-        console.error(`Error processing queue ${this.queueName}:`, error);
+        this.logger?.error('Error processing queue items', {
+          queueName: this.queueName,
+          error: error instanceof Error ? error.message : String(error),
+          errorStack: error instanceof Error ? error.stack : undefined,
+        });
       });
     }, 1000);
   }
@@ -101,7 +108,11 @@ export class QueueService<T> extends EventEmitter {
   private startRetryProcessor(): void {
     this.retryInterval = setInterval(() => {
       this.processRetryItems().catch(error => {
-        console.error(`Error processing retry items for queue ${this.queueName}:`, error);
+        this.logger?.error('Error processing retry items', {
+          queueName: this.queueName,
+          error: error instanceof Error ? error.message : String(error),
+          errorStack: error instanceof Error ? error.stack : undefined,
+        });
       });
     }, 5000);
   }
@@ -127,7 +138,12 @@ export class QueueService<T> extends EventEmitter {
       }
 
       this.processItem(item).catch(error => {
-        console.error(`Error processing item ${item.id}:`, error);
+        this.logger?.error('Error processing queue item', {
+          queueName: this.queueName,
+          itemId: item.id,
+          error: error instanceof Error ? error.message : String(error),
+          errorStack: error instanceof Error ? error.stack : undefined,
+        });
       });
     }
 
@@ -179,7 +195,12 @@ export class QueueService<T> extends EventEmitter {
         await this.handleItemFailure(item, result);
       }
     } catch (error) {
-      console.error(`Unexpected error processing item ${item.id}:`, error);
+      this.logger?.error('Unexpected error processing queue item', {
+        queueName: this.queueName,
+        itemId: item.id,
+        error: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+      });
 
       const result: QueueProcessingResult = {
         success: false,
@@ -313,6 +334,7 @@ export class QueueService<T> extends EventEmitter {
   }
 
   public async enqueue(data: T, options: Partial<QueueItem<T>> = {}): Promise<string> {
+    const startTime = Date.now();
     const item: QueueItem<T> = {
       id: options.id || randomUUID(),
       data,
@@ -324,7 +346,22 @@ export class QueueService<T> extends EventEmitter {
       beerTapId: options.beerTapId,
     };
 
+    this.logger?.info('Enqueuing item', {
+      queueName: this.queueName,
+      itemId: item.id,
+      beerTapId: item.beerTapId,
+      maxAttempts: item.maxAttempts,
+    });
+
     await this.redis.enqueue(this.queueName, item);
+    const enqueueDuration = Date.now() - startTime;
+
+    this.logger?.info('Item successfully enqueued', {
+      queueName: this.queueName,
+      itemId: item.id,
+      beerTapId: item.beerTapId,
+      enqueueDuration,
+    });
 
     this.emitEvent({
       type: 'item_added',

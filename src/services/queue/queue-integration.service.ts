@@ -165,7 +165,7 @@ export class QueueIntegrationService extends EventEmitter {
         };
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error(`Failed to trigger beer tap ${beerTapId} for item ${item.id}:`, error);
+        // Note: console.error used here since this is in a processor callback without access to main logger
 
         this.emit('beerTapError', {
           beerTapId,
@@ -358,7 +358,19 @@ export class QueueIntegrationService extends EventEmitter {
     };
   }
 
-  public async processWebhookTransaction(transaction: Payment): Promise<void> {
+  public async processWebhookTransaction(transaction: Payment, logger?: any): Promise<void> {
+    const startTime = Date.now();
+    
+    logger?.info('Processing webhook transaction in queue integration', {
+      txHash: transaction.txHash,
+      senderAddress: transaction.senderAddress,
+      receiverEnsPrimaryName: transaction.receiverEnsPrimaryName,
+      invoiceAmount: transaction.invoiceAmount,
+      invoiceCurrency: transaction.invoiceCurrency,
+      memo: transaction.memo,
+      availableTaps: Array.from(this.beerTapConfigs.keys()),
+    });
+
     const matchingConfig = Array.from(this.beerTapConfigs.values()).find(config => {
       return (
         config.transactionReceiverEns === transaction.receiverEnsPrimaryName &&
@@ -368,7 +380,30 @@ export class QueueIntegrationService extends EventEmitter {
       );
     });
 
-    if (!matchingConfig) return;
+    if (!matchingConfig) {
+      logger?.warn('No matching beer tap configuration found', {
+        txHash: transaction.txHash,
+        receiverEnsPrimaryName: transaction.receiverEnsPrimaryName,
+        memo: transaction.memo,
+        invoiceCurrency: transaction.invoiceCurrency,
+        invoiceAmount: transaction.invoiceAmount,
+        availableConfigs: Array.from(this.beerTapConfigs.values()).map(config => ({
+          id: config.id,
+          receiverEns: config.transactionReceiverEns,
+          memo: config.transactionMemo,
+          currency: config.transactionCurrency,
+          amount: config.transactionAmount,
+        })),
+      });
+      return;
+    }
+
+    logger?.info('Found matching beer tap configuration', {
+      txHash: transaction.txHash,
+      beerTapId: matchingConfig.id,
+      deviceId: matchingConfig.thingsBoardDeviceId,
+      cupSize: matchingConfig.thingsBoardCupSize,
+    });
 
     const task: BeerTapQueueItem = {
       transactionHash: transaction.txHash,
@@ -380,14 +415,39 @@ export class QueueIntegrationService extends EventEmitter {
       timestamp: new Date(),
     };
 
-    const itemId = await this.enqueueBeerTapTask(matchingConfig.id, task);
+    try {
+      const queueLengthBefore = await this.getBeerTapQueueLength(matchingConfig.id);
+      const itemId = await this.enqueueBeerTapTask(matchingConfig.id, task);
+      const processingDuration = Date.now() - startTime;
 
-    this.emit('transactionEnqueued', {
-      transactionHash: transaction.txHash,
-      beerTapId: matchingConfig.id,
-      itemId,
-      timestamp: new Date(),
-    });
+      logger?.info('Transaction successfully enqueued for beer tap processing', {
+        txHash: transaction.txHash,
+        beerTapId: matchingConfig.id,
+        itemId,
+        queueLengthBefore,
+        queuePosition: queueLengthBefore + 1,
+        processingDuration,
+      });
+
+      this.emit('transactionEnqueued', {
+        transactionHash: transaction.txHash,
+        beerTapId: matchingConfig.id,
+        itemId,
+        timestamp: new Date(),
+      });
+    } catch (error) {
+      const errorDuration = Date.now() - startTime;
+      
+      logger?.error('Failed to enqueue transaction for beer tap processing', {
+        txHash: transaction.txHash,
+        beerTapId: matchingConfig.id,
+        error: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+        errorDuration,
+      });
+      
+      throw error;
+    }
   }
 
   public async destroy(): Promise<void> {

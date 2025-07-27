@@ -65,16 +65,42 @@ export class QueueManagerService {
     return this.isInitialized && this.redis.isReady();
   }
 
-  public async processWebhookTransaction(transaction: Payment): Promise<{ success: boolean; message: string }> {
+  public async processWebhookTransaction(transaction: Payment, logger?: any): Promise<{ success: boolean; message: string }> {
+    const startTime = Date.now();
+    
+    logger?.info('Processing webhook transaction in queue manager', {
+      txHash: transaction.txHash,
+      senderAddress: transaction.senderAddress,
+      receiverAddress: transaction.receiverAddress,
+      invoiceAmount: transaction.invoiceAmount,
+      invoiceCurrency: transaction.invoiceCurrency,
+      memo: transaction.memo,
+      startTime,
+    });
+
     try {
-      await this.queueIntegration.processWebhookTransaction(transaction);
+      await this.queueIntegration.processWebhookTransaction(transaction, logger);
+      const processingDuration = Date.now() - startTime;
+
+      logger?.info('Transaction successfully queued for processing', {
+        txHash: transaction.txHash,
+        processingDuration,
+      });
 
       return {
         success: true,
         message: 'Transaction successfully queued for processing',
       };
     } catch (error) {
-      console.error('Failed to process webhook transaction:', error);
+      const errorDuration = Date.now() - startTime;
+      
+      logger?.error('Failed to process webhook transaction in queue manager', {
+        txHash: transaction.txHash,
+        error: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+        errorDuration,
+      });
+      
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Unknown error',
