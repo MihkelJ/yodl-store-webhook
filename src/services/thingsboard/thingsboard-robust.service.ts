@@ -15,6 +15,7 @@ interface MessageToThingsBoard {
   method: string;
   params: number;
   config: ThingsBoardConfig;
+  retryAttempts?: number;
 }
 
 interface ReadFromThingsBoard {
@@ -37,6 +38,7 @@ export async function communicateWithThingsBoard({
   method,
   params,
   config,
+  retryAttempts = 3,
 }: MessageToThingsBoard): Promise<Response> {
   assert(deviceId, 'deviceId is required');
   assert(method, 'method is required');
@@ -44,34 +46,76 @@ export async function communicateWithThingsBoard({
 
   initializeServices(config);
 
-  try {
-    if (!authService) {
-      throw new Error('ThingsBoard authentication not configured');
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= retryAttempts; attempt++) {
+    try {
+      if (!authService) {
+        throw new Error('ThingsBoard authentication not configured');
+      }
+
+      // Use REST API with JWT authentication and device ID
+      const response = await authService.makeAuthenticatedRequest(`/api/rpc/oneway/${deviceId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          method,
+          params,
+          persistent: false,
+          timeout: config.rpcTimeout,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = createHttpError(response.status, `ThingsBoard REST API error: ${response.status} ${response.statusText}`);
+        
+        // Don't retry on client errors (4xx)
+        if (response.status >= 400 && response.status < 500) {
+          throw error;
+        }
+        
+        // Retry on server errors (5xx) and other issues
+        if (attempt < retryAttempts) {
+          console.warn(`ThingsBoard RPC attempt ${attempt} failed with ${response.status}, retrying immediately...`);
+          lastError = error;
+          continue;
+        }
+        
+        throw error;
+      }
+
+      // Success - log if this was a retry
+      if (attempt > 1) {
+        console.info(`ThingsBoard RPC succeeded on attempt ${attempt}`);
+      }
+
+      return response;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      // Don't retry on client errors (4xx) that we can detect
+      if (error instanceof Error && error.message.includes('ThingsBoard authentication not configured')) {
+        throw error;
+      }
+      
+      if (attempt < retryAttempts) {
+        console.warn(`ThingsBoard RPC attempt ${attempt} failed, retrying immediately...`, {
+          error: lastError.message,
+          deviceId,
+          method
+        });
+        continue;
+      }
+      
+      console.error('ThingsBoard RPC communication failed after all attempts:', lastError);
+      throw lastError;
     }
-
-    // Use REST API with JWT authentication and device ID
-    const response = await authService.makeAuthenticatedRequest(`/api/rpc/oneway/${deviceId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        method,
-        params,
-        persistent: false,
-        timeout: config.rpcTimeout,
-      }),
-    });
-
-    if (!response.ok) {
-      throw createHttpError(response.status, `ThingsBoard REST API error: ${response.status} ${response.statusText}`);
-    }
-
-    return response;
-  } catch (error) {
-    console.error('ThingsBoard RPC communication failed:', error);
-    throw error;
   }
+
+  // This should never be reached, but just in case
+  throw lastError || new Error('ThingsBoard communication failed');
 }
 
 export async function readFromThingsBoard({
@@ -125,12 +169,13 @@ export async function readFromThingsBoard({
   }
 }
 
-export async function triggerBeerTap(deviceId: string, cupSize: number, config: ThingsBoardConfig): Promise<Response> {
+export async function triggerBeerTap(deviceId: string, cupSize: number, config: ThingsBoardConfig, retryAttempts = 3): Promise<Response> {
   return await communicateWithThingsBoard({
     deviceId,
     method: 'setCupSize',
     params: cupSize,
     config,
+    retryAttempts,
   });
 }
 
